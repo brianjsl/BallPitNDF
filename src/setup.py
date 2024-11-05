@@ -1,3 +1,4 @@
+from pydrake.geometry import StartMeshcat
 from pydrake.all import (
     AddMultibodyPlantSceneGraph,
     DiagramBuilder,
@@ -10,31 +11,66 @@ from pydrake.all import (
     Multiplexer,
     Meshcat,
 )
+from manipulation.station import (
+    MakeHardwareStation,
+    LoadScenario,
+    AppendDirectives
+)
 from manipulation.utils import ConfigureParser
+from omegaconf import DictConfig
 
+def BuildStation(meshcat:Meshcat, cfg: DictConfig):
+    '''
+    Creates a custom manipulation station from a hydra config with a panda robot arm. 
+    '''
+    scenario = """
+directives:
+    - add_model:
+        name: panda
+        file: package://drake_models/franka_description/urdf/panda_arm.urdf
+        default_joint_positions:
+            panda_joint1: [-1.57]
+            panda_joint2: [0.1]
+            panda_joint3: [0]
+            panda_joint4: [-1.2]
+            panda_joint5: [0]
+            panda_joint6: [ 1.6]
+            panda_joint7: [0]
+    - add_weld:
+        parent: world
+        child: panda::panda_link0
+"""
 
-def CreatePandaStation(
-    model_directives: str,
+    for i in range(cfg.num_balls):
+        scenario += """
+    - add_model:
+        name: sphere_{i}
+        file: src/assets/ball/ball.sdf
+"""
+    scenario = LoadScenario(scenario)
+    return MakeHardwareStation(scenario, meshcat)
+
+def build_pouring_diagram(
     meshcat: Meshcat,
+    cfg: DictConfig,
     timestep: float = 1e-4,
     panda_name: str = "panda",
     panda_hand_name: str = "panda_hand",
 ):
+    '''
+    Builds the manipulation station with the given model directives.
+    '''
     meshcat.Delete()
 
     # Initialize the builder and plant
     builder = DiagramBuilder()
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=timestep)
+    manip_station = BuildStation(meshcat, cfg)
+    station = builder.AddSystem(manip_station)
+    plant = station.GetSubsystemByName("plant")
 
     # Parse and process the directive
     parser = Parser(plant)
     ConfigureParser(parser)
-
-    parser.AddModelsFromString(model_directives, ".dmd.yaml")
-
-    # Finalize the plant and add visualization
-    plant.Finalize()
-    visualizer = MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
 
     panda = plant.GetModelInstanceByName(panda_name)
 
@@ -139,4 +175,13 @@ def CreatePandaStation(
     diagram = builder.Build()
     diagram.set_name("PandaManipulationStation")
 
-    return diagram
+    return diagram, plant
+
+def visualize_diagram(diagram):
+    """
+    Util to visualize the system diagram
+    """
+    from IPython.display import SVG, display
+    import pydot
+    display(SVG(pydot.graph_from_dot_data(
+        diagram.GetGraphvizString(max_depth=2))[0].create_svg()))
