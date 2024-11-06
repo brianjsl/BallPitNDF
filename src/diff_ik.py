@@ -32,7 +32,7 @@ class PandaDiffIKController(LeafSystem):
         V_G = self.spatial_velocity_input_port.Eval(context)
         self.plant.SetPositions(self.plant_context, self.panda_arm, q)
 
-        print("q: ", q)
+        # print("q: ", q, "V_G: ", V_G)
 
         J_G = self.plant.CalcJacobianSpatialVelocity(
             self.plant_context,
@@ -45,9 +45,7 @@ class PandaDiffIKController(LeafSystem):
         J_G = J_G[:, :7]
 
         v = np.linalg.pinv(J_G).dot(V_G)
-        # output.SetFromVector(v)
-        print("v: ", v)
-        output.SetFromVector([0, 0, 0, 0, 0, 0, 0])
+        output.SetFromVector(v)
 
 
 class TrajectoryPlanner(LeafSystem):
@@ -85,27 +83,34 @@ class TrajectoryPlanner(LeafSystem):
         t = context.get_time()
         goal_pose = self.goal_pose_input_port.Eval(context)
 
-        if goal_pose != self.prev_goal_pose:
+        # print(
+        #     goal_pose.translation(),
+        #     self.prev_goal_pose.translation(),
+        #     goal_pose.IsExactlyEqualTo(self.prev_goal_pose),
+        # )
+        if not goal_pose.IsExactlyEqualTo(self.prev_goal_pose):
             # create new trajectory
             current_pose = self.plant.EvalBodyPoseInWorld(
                 self.plant_context, self.link6
             )
+
+            print("goal chacned")
+            # print("current_pose: ", current_pose)
+            # print("goal_pose: ", goal_pose)
+
             trajectory = PiecewisePose.MakeLinear(
-                times=[t, t + 1], poses=[current_pose, goal_pose]
+                # times=[t, t + 1],
+                times=[t, t + 0.5],
+                poses=[current_pose, goal_pose],
             )
 
-            print(
-                "current: ",
-                current_pose.translation(),
-                "goal: ",
-                goal_pose.translation(),
-            )
             self.trajectory = trajectory
             self.trajectory_VG = trajectory.MakeDerivative(1)
-            self.prev_goal_pose = goal_pose
+            self.prev_goal_pose = RigidTransform(
+                p=goal_pose.translation(), R=goal_pose.rotation()
+            )
 
         spatial_velocity = self.trajectory_VG.value(t).ravel()
-        print("spatial velocity: ", spatial_velocity)
         output.SetFromVector(spatial_velocity)
 
     def PrintGoalPose(self, context, event):
