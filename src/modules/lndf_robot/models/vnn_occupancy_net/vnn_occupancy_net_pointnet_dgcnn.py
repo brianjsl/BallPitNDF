@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from src.models.vnn_occupancy_net.layers_equi import *
+from src.modules.lndf_robot.models.vnn_occupancy_net.layers_equi import *
 
 def maxpool(x, dim=-1, keepdim=False):
     out, _ = x.max(dim=dim, keepdim=keepdim)
