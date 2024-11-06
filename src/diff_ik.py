@@ -32,6 +32,8 @@ class PandaDiffIKController(LeafSystem):
         V_G = self.spatial_velocity_input_port.Eval(context)
         self.plant.SetPositions(self.plant_context, self.panda_arm, q)
 
+        print("q: ", q)
+
         J_G = self.plant.CalcJacobianSpatialVelocity(
             self.plant_context,
             JacobianWrtVariable.kV,
@@ -43,7 +45,9 @@ class PandaDiffIKController(LeafSystem):
         J_G = J_G[:, :7]
 
         v = np.linalg.pinv(J_G).dot(V_G)
-        output.SetFromVector(v)
+        # output.SetFromVector(v)
+        print("v: ", v)
+        output.SetFromVector([0, 0, 0, 0, 0, 0, 0])
 
 
 class TrajectoryPlanner(LeafSystem):
@@ -87,14 +91,21 @@ class TrajectoryPlanner(LeafSystem):
                 self.plant_context, self.link6
             )
             trajectory = PiecewisePose.MakeLinear(
-                times=[t, t + 5], poses=[current_pose, goal_pose]
+                times=[t, t + 1], poses=[current_pose, goal_pose]
             )
 
+            print(
+                "current: ",
+                current_pose.translation(),
+                "goal: ",
+                goal_pose.translation(),
+            )
             self.trajectory = trajectory
             self.trajectory_VG = trajectory.MakeDerivative(1)
             self.prev_goal_pose = goal_pose
 
         spatial_velocity = self.trajectory_VG.value(t).ravel()
+        print("spatial velocity: ", spatial_velocity)
         output.SetFromVector(spatial_velocity)
 
     def PrintGoalPose(self, context, event):
