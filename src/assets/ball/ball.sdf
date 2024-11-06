@@ -3,7 +3,7 @@
 <sdf version="1.5">
   <model name="ball_bearing">
     <link name="link">
-      <pose>0 0 0.003 0 0 0</pose>
+      <pose>0.5 0.0 0.5 0 0 0</pose>
       <inertial>
         <mass>0.0011</mass>
         <inertia>
