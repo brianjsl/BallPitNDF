@@ -59,17 +59,12 @@ directives:
 """
     for i in range(cfg.num_balls):
         env_directives += f"""
-    - add_frame:
-        name: ball_{i}_origin
-        X_PF: 
-            base_frame: world
-            translation: [{0.5 + np.random.choice([-1,1])*0.03 + 0.1*(random.random()-0.5)}, {np.random.choice([-1,1])*0.03 + 0.1*(random.random()-0.5)}, 0.5]
     - add_model:
         name: ball_{i}
         file: file://{os.getcwd()}/src/assets/sphere/sphere.sdf
-    - add_weld: 
-        parent: ball_{i}_origin
-        child: ball_{i}::sphere 
+        default_free_body_pose:
+            sphere:
+                translation: [{0.5 + np.random.choice([-1,1])*0.03 + 0.1*(random.random()-0.5)}, {np.random.choice([-1,1])*0.03 + 0.1*(random.random()-0.5)}, 0.5]
 """
     return robot_directives, env_directives
 
@@ -89,7 +84,7 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat):
     meshcat.StartRecording()
 
     # run as fast as possible
-    simulator.set_target_realtime_rate(0)
+    simulator.set_target_realtime_rate(1)
     meshcat.AddButton("Stop Simulation", "Escape")
     print("Press Escape to stop the simulation")
     while meshcat.GetButtonClicks("Stop Simulation") < 1:
