@@ -1,4 +1,3 @@
-from pydrake.geometry import StartMeshcat
 from pydrake.all import (
     AddMultibodyPlantSceneGraph,
     DiagramBuilder,
@@ -199,6 +198,7 @@ def MakePandaManipulationStation(
     builder.Connect(panda_hand_position.get_output_port(), multiplex.get_input_port(1))
 
     builder.Connect(
+        # panda_arm_position.get_output_port(),
         multiplex.get_output_port(),
         desired_state_from_position.get_input_port(),
     )

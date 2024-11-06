@@ -1,1 +1,1 @@
-from .setup import build_pouring_diagram 
+from .setup import MakePandaManipulationStation
