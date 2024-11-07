@@ -5,7 +5,7 @@
       <inertial>
         <pose>1.1641484852507873e-17 0.5000000020301846 -9.978415587863892e-18 0 0 0</pose>
         <!-- <mass>1</mass> -->
-        <mass>66757.47355975732</mass>
+        <mass>6300.47355975732</mass>
         <inertia>
           <ixx>169117.86191305777</ixx>
           <ixy>-2.9837243629024044e-13</ixy>
@@ -40,12 +40,12 @@
           <drake:mu_static>1</drake:mu_static>
           <drake:rigid_hydroelastic/>
         </drake:proximity_properties>
-
-        <!-- <drake:proximity_properties>
+<!-- 
+        <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
           <drake:hydroelastic_modulus>1.0e6</drake:hydroelastic_modulus>
-        </drake:proximity_properties> -->
-      </collision>
+        </drake:proximity_properties>
+      </collision> -->
     </link>
   </model>
 </sdf>

@@ -84,7 +84,7 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat):
     meshcat.StartRecording()
 
     # run as fast as possible
-    simulator.set_target_realtime_rate(1)
+    simulator.set_target_realtime_rate(0.1)
     meshcat.AddButton("Stop Simulation", "Escape")
     print("Press Escape to stop the simulation")
     while meshcat.GetButtonClicks("Stop Simulation") < 1:
