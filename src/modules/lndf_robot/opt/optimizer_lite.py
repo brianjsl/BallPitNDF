@@ -8,6 +8,7 @@ import numpy as np
 import trimesh
 from sklearn.manifold import TSNE
 import plotly.express as px
+from tqdm import tqdm
 
 from src.modules.lndf_robot.utils import util, torch_util, trimesh_util, torch3d_util
 from src.modules.lndf_robot.utils.plotly_save import plot3d, multiplot
@@ -310,7 +311,8 @@ class OccNetOptimizer:
         trans_mat_list = []
         rot_mat_list = []
         # -- Run optimization -- #
-        for i in range(self.opt_iterations):
+        pbar = tqdm(range(self.opt_iterations))
+        for i in pbar:
             T_mat = torch_util.angle_axis_to_rotation_matrix(rot).squeeze()
 
             # Generating noise vec takes a lot of cpu!!!
@@ -330,7 +332,7 @@ class OccNetOptimizer:
             if (i + 1) % 100 == 0:
                 losses_str = ['%f' % val.item() for val in losses]
                 loss_str = ', '.join(losses_str)
-                print(f'i: {i}, losses: {loss_str}')
+                print(f'i: {i+1}, losses: {loss_str}')
 
             if return_intermediates and (i + 1) % 10 == 0:
                 trans_mat_list.append(trans.detach().cpu())
