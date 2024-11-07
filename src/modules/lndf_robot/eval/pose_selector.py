@@ -6,28 +6,55 @@ from omegaconf import DictConfig
 from src.modules.lndf_robot.models.conv_occupancy_net import ConvolutionalOccupancyNetwork
 from src.modules.lndf_robot.models.vnn_occupancy_net import VNNOccNet
 from src.modules.lndf_robot.opt.optimizer_lite import OccNetOptimizer
-from src.modules.lndf_robot.opt.optimizer_geom import GeomOptimizer
 import os
 import os.path as osp
 from pathlib import Path
+from src.modules.lndf_robot.opt.optimizer_lite import Demo
 
-class LocalNDF():
-    def __init__(self, cfg: DictConfig, obj_pcd):
-        self.obj_pcd = obj_pcd
+class LocalNDF:
+    def __init__(self, cfg: DictConfig):
 
         #create LNDF model
         self.model = self._create_model(cfg['lndf']['model'])
 
         #generate query points 
-        self.query_point_args = cfg['lndf']['query_point_args']
-        self.query_points = self.create_query_pts(cfg['lndf']['query_point_type'], self.query_point_args)
+        self.query_point_cfg = cfg['lndf']['query_point']
+        self.query_points = self._create_query_pts(self.query_point_cfg['type'], self.query_point_cfg['args'])
 
         #generate eval_dir
-        eval_dir = osp.join(os.get_cwd(), 'src/modules/lndf_robot/', cfg['lndf']['eval_dir'])
-        os.makedirs(eval_dir, exist_ok=True)
+        self.eval_dir = osp.join(os.getcwd(), cfg['lndf']['eval_dir'])
+        os.makedirs(self.eval_dir, exist_ok=True)
 
+        #create optimizer
         self.pose_optimizer_cfg = cfg['lndf']['pose_optimizer']
-        self.optimizer = OccNetOptimizer(self.model, self.query_points, eval_dir, **self.pose_optimizer_cfg)
+        self.optimizer = self._create_optimizer(self.model, self.query_points, self.pose_optimizer_cfg, self.eval_dir)
+
+    #properties
+    @property
+    def ModelTypes(self):
+        return ['CONV_OCC', 'VNN_NDF']
+
+    @property
+    def query_pts(self):
+        return self.query_points
+    
+    @property
+    def viz_path(self):
+        return self.eval_dir
+
+
+    @property
+    def QueryPointTypes(self):
+        return {
+            'SPHERE',
+            'RECT',
+            'CYLINDER',
+            'ARM',
+            'SHELF',
+            'NDF_GRIPPER',
+            'NDF_RACK',
+            'NDF_SHELF',
+        }
     
     def _create_model(self, model_cfg: DictConfig):
         model_type = model_cfg['type']
@@ -44,7 +71,9 @@ class LocalNDF():
             model = VNNOccNet(**model_args)
             print('USING NDF')
 
-        model.load_state_dict(torch.load(model_ckpt))
+        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        model.load_state_dict(torch.load(model_ckpt, map_location=device))
+        return model
     
     def _create_optimizer(self, model: nn.Module, query_pts, optimizer_cfg: DictConfig, eval_dir: Path):
         '''
@@ -55,40 +84,21 @@ class LocalNDF():
         else:
             optimizer_type = None
 
-        optimizer_config = optimizer_cfg['args']
+        optimizer_args = optimizer_cfg['args']
         if eval_dir is not None:
             opt_viz_path = osp.join(eval_dir, 'visualization')
         else:
             opt_viz_path = 'visualization'
+        
+        assert optimizer_type in ['GEOM', 'LNDF'], 'Invalid optimizer type'
 
-        if optimizer_type == 'GEOM':
-            print('Using geometric optimizer')
-            optimizer = GeomOptimizer(model, query_pts, viz_path=opt_viz_path,
-                **optimizer_config)
-        else:
+        if optimizer_type == 'LNDF':
             print('Using Occ Net optimizer')
             optimizer = OccNetOptimizer(model, query_pts, viz_path=opt_viz_path,
-                **optimizer_config)
+                **optimizer_args)
         return optimizer
 
-    @property
-    def ModelTypes():
-        return ['CONV_OCC', 'VNN_NDF']
-
-    @property
-    def QueryPointTypes():
-        return {
-            'SPHERE',
-            'RECT',
-            'CYLINDER',
-            'ARM',
-            'SHELF',
-            'NDF_GRIPPER',
-            'NDF_RACK',
-            'NDF_SHELF',
-        }
-
-    def make_cut(self, r = 0.1, sample_pt = None):
+    def make_cut(self, obj_pcd, r = 0.1, sample_pt = None):
         """
     Cut out portion of object that is some distance away from a sample point.
 
@@ -98,17 +108,17 @@ class LocalNDF():
             Defaults to None.
     """
         if sample_pt is None:
-            sample_pt = self.obj_pcd[np.random.randint(0, self.obj_pcd.shape[0])][:]
+            sample_pt = obj_pcd[np.random.randint(0, obj_pcd.shape[0])][:]
 
         new_pcd = []
-        for pt_idx in range(self.obj_pcd.shape[0]):
-            pt = self.obj_pcd[pt_idx:pt_idx + 1][0]
+        for pt_idx in range(obj_pcd.shape[0]):
+            pt = obj_pcd[pt_idx:pt_idx + 1][0]
             dis = (sum((pt.squeeze() - sample_pt)**2))**0.5
             if dis > r:
                 new_pcd.append(pt)
         return np.vstack(new_pcd)
     
-    def create_query_pts(self, query_pts_type, query_pts_args) -> np.ndarray:
+    def _create_query_pts(self, query_pts_type, query_pts_args) -> np.ndarray:
         """
         Create query points from given config
 
@@ -139,6 +149,12 @@ class LocalNDF():
             query_pts = QueryPoints.generate_ndf_shelf(**query_pts_args)
 
         return query_pts 
+    
+    def load_demo(self, demo: Demo):
+        self.optimizer.add_demo(demo)
+    
+    def process_demos(self):
+        self.optimizer.process_demos()
         
     def get_pose(self, target_obj_pcd, viz_path):
         return self.optimizer.optimize_transform_implicit(target_obj_pcd, ee=True, viz_path = viz_path, 

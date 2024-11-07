@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 from torch import distributions as dist
 
-from src.models.conv_occupancy_net.encoder import (pointnet, pointnetpp)
-from src.models.conv_occupancy_net import decoder
+from src.modules.lndf_robot.models.conv_occupancy_net.encoder import (pointnet, pointnetpp)
+from src.modules.lndf_robot.models.conv_occupancy_net import decoder
 
 
 # Encoder dictionary

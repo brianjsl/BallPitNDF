@@ -1,0 +1,6 @@
+lndf:
+  query_point_type: RECT
+  eval_dir: outputs
+  pose_optimizer: LNDF
+  query_point_args: null 
+  model: CONV_OCC

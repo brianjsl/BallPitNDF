@@ -9,11 +9,9 @@ import open3d as o3d
 from sklearn.manifold import TSNE
 import plotly.express as px
 
-from airobot import log_info, log_warn, log_debug, log_critical
 
-from src.utils import util, torch_util, trimesh_util, torch3d_util
-from src.utils.eval_gen_utils import object_is_still_grasped
-from src.utils.plotly_save import plot3d, multiplot
+from src.modules.lndf_robot.utils import util, torch_util, trimesh_util, torch3d_util
+from src.modules.lndf_robot.utils.plotly_save import plot3d, multiplot
 
 
 class Demo:

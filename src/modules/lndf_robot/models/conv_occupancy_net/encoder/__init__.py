@@ -1,7 +1,6 @@
-from src.models.conv_occupancy_net.encoder import (
+from src.modules.lndf_robot.models.conv_occupancy_net.encoder import (
     pointnet, voxels, pointnetpp
 )
-
 
 encoder_dict = {
     'pointnet_local_pool': pointnet.LocalPoolPointnet,
