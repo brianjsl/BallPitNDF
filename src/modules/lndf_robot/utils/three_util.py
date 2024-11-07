@@ -2,7 +2,7 @@ import numpy as np
 import trimesh
 from mesh_to_sdf import mesh_to_voxels
 
-from ndf_robot.utils import fork_pdb
+from src.modules.lndf_robot.utils import fork_pdb
 
 def trimesh_show(np_pcd_list, color_list=None, show=True):
     if color_list is None:

@@ -9,11 +9,8 @@ import trimesh
 from sklearn.manifold import TSNE
 import plotly.express as px
 
-from airobot import log_info, log_warn, log_debug, log_critical
-
-from src.utils import util, torch_util, trimesh_util, torch3d_util
-from src.utils.eval_gen_utils import object_is_still_grasped
-from src.utils.plotly_save import plot3d, multiplot
+from src.modules.lndf_robot.utils import util, torch_util, trimesh_util, torch3d_util
+from src.modules.lndf_robot.utils.plotly_save import plot3d, multiplot
 
 
 class Demo:
@@ -333,7 +330,7 @@ class OccNetOptimizer:
             if (i + 1) % 100 == 0:
                 losses_str = ['%f' % val.item() for val in losses]
                 loss_str = ', '.join(losses_str)
-                log_debug(f'i: {i}, losses: {loss_str}')
+                print(f'i: {i}, losses: {loss_str}')
 
             if return_intermediates and (i + 1) % 10 == 0:
                 trans_mat_list.append(trans.detach().cpu())
@@ -347,7 +344,7 @@ class OccNetOptimizer:
         # -- Find best index -- #
         best_idx = torch.argmin(torch.stack(losses)).item()
         best_loss = losses[best_idx]
-        log_debug('best loss: %f, best_idx: %d' % (best_loss, best_idx))
+        print('best loss: %f, best_idx: %d' % (best_loss, best_idx))
 
         for j in range(M):
             # -- Pose query points -- #

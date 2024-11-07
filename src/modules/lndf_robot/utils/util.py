@@ -530,16 +530,16 @@ def ori_difference(ori_1, ori_2):
     return min(angle_diff1, angle_diff2)
 
 
-def pose_from_vectors(x_vec, y_vec, z_vec, trans, frame_id="yumi_body"):
-    # Normalized frame
-    hand_orient_norm = np.vstack((x_vec, y_vec, z_vec))
-    hand_orient_norm = hand_orient_norm.transpose()
-    quat = mat2quat(hand_orient_norm)
-    # define hand pose
-    pose = convert_pose_type(list(trans) + list(quat),
-                             type_out="PoseStamped",
-                             frame_out=frame_id)
-    return pose
+# def pose_from_vectors(x_vec, y_vec, z_vec, trans, frame_id="yumi_body"):
+#     # Normalized frame
+#     hand_orient_norm = np.vstack((x_vec, y_vec, z_vec))
+#     hand_orient_norm = hand_orient_norm.transpose()
+#     quat = mat2quat(hand_orient_norm)
+#     # define hand pose
+#     pose = convert_pose_type(list(trans) + list(quat),
+#                              type_out="PoseStamped",
+#                              frame_out=frame_id)
+#     return pose
 
 def transform_vectors(vectors, pose_transform):
     """Transform a set of vectors
@@ -676,12 +676,12 @@ def rand_body_yaw_transform(pos, min_theta=0.0, max_theta=2*np.pi):
     return yaw_trans
 
 
-def get_base_pose_pb(obj_id, pb_client_id=0):
-    import pybullet as p
-    pose = p.getBasePositionAndOrientation(obj_id, physicsClientId=pb_client_id)
-    pos, ori = list(pose[0]), list(pose[1])
-    pose = list2pose_stamped(pos + ori)
-    return pose
+# def get_base_pose_pb(obj_id, pb_client_id=0):
+#     import pybullet as p
+#     pose = p.getBasePositionAndOrientation(obj_id, physicsClientId=pb_client_id)
+#     pos, ori = list(pose[0]), list(pose[1])
+#     pose = list2pose_stamped(pos + ori)
+#     return pose
 
 
 def transform_pcd(pcd, transform):
@@ -690,6 +690,27 @@ def transform_pcd(pcd, transform):
     pcd_new = np.matmul(transform, pcd.T)[:-1, :].T
     return pcd_new
 
+def euler2rot(euler, axes='xyz'):
+    """
+    Convert euler angles to rotation matrix.
+
+    Args:
+        euler (list or np.ndarray): euler angles (shape: :math:`[3,]`).
+        axes (str): Specifies sequence of axes for rotations.
+            3 characters belonging to the set {'X', 'Y', 'Z'}
+            for intrinsic rotations (rotation about the axes of a
+            coordinate system XYZ attached to a moving body),
+            or {'x', 'y', 'z'} for extrinsic rotations (rotation about
+            the axes of the fixed coordinate system).
+
+    Returns:
+        np.ndarray: rotation matrix (shape: :math:`[3, 3]`).
+    """
+    r = R.from_euler(axes, euler)
+    if hasattr(r, 'as_matrix'):
+        return r.as_matrix()
+    else:
+        return r.as_dcm()
 
 # import healpy as hp
 # from https://github.com/google-research/google-research/blob/3ed7475fef726832c7288044c806481adc6de827/implicit_pdf/models.py#L381
@@ -709,7 +730,6 @@ def generate_healpix_grid(recursion_level=None, size=None):
     (N, 3, 3) array of rotation matrices, where N=72*8**recursion_level.
   """
   import healpy as hp  # pylint: disable=g-import-not-at-top
-  from airobot.utils import common
 
   assert not(recursion_level is None and size is None)
   if size:
@@ -738,13 +758,13 @@ def generate_healpix_grid(recursion_level=None, size=None):
     #     tfg.rotation_matrix_3d.from_euler([tilt, 0., 0.]), 0)
 
     euler = np.stack([azimuths, np.zeros(number_pix), np.zeros(number_pix)], 1)
-    rot_mats = common.euler2rot(euler)
+    rot_mats = euler2rot(euler)
 
     euler2 = np.stack([np.zeros(number_pix), np.zeros(number_pix), polars], 1)
-    rot_mats = rot_mats @ common.euler2rot(euler2)
+    rot_mats = rot_mats @ euler2rot(euler2)
 
     euler3 = [tilt, 0, 0]
-    rot_mats = rot_mats @ common.euler2rot(euler3)
+    rot_mats = rot_mats @ euler2rot(euler3)
 
     grid_rots_mats.append(rot_mats)
 

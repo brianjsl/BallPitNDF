@@ -22,7 +22,6 @@ class QueryPoints():
         Returns:
             np.ndarray: (n_pts x 3) array of query points
         """
-        # http://extremelearning.com.au/how-to-generate-uniformly-random-points-on-n-spheres-and-n-balls/
         u = 2 * np.random.rand(n_pts, 1) - 1
         phi = 2 * np.pi * np.random.rand(n_pts, 1)
         r = radius * (np.random.rand(n_pts, 1)**(1 / 3.))
