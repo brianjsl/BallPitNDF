@@ -16,7 +16,7 @@ class PandaDiffIKController(LeafSystem):
         self.plant = plant
         self.plant_context = plant.CreateDefaultContext()
         self.panda_arm = plant.GetModelInstanceByName(panda_arm_name)
-        self.link6_frame = plant.GetBodyByName("panda_link6").body_frame()
+        self.link7_frame = plant.GetBodyByName("panda_link7").body_frame()
         self.world_frame = plant.world_frame()
 
         self.q_input_port = self.DeclareVectorInputPort("q", 7)
@@ -32,17 +32,15 @@ class PandaDiffIKController(LeafSystem):
         V_G = self.spatial_velocity_input_port.Eval(context)
         self.plant.SetPositions(self.plant_context, self.panda_arm, q)
 
-        # print("q: ", q, "V_G: ", V_G)
-
         J_G = self.plant.CalcJacobianSpatialVelocity(
             self.plant_context,
             JacobianWrtVariable.kV,
-            self.link6_frame,
+            self.link7_frame,
             [0, 0, 0],
             self.world_frame,
             self.world_frame,
         )
-        J_G = J_G[:, :7]
+        J_G = J_G[:, 0:7]
 
         v = np.linalg.pinv(J_G).dot(V_G)
         output.SetFromVector(v)
