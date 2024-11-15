@@ -190,7 +190,7 @@ class QueryPoints():
         Returns:
             np.ndarray: (n_pts, 3)
         """
-        ref_fname = 'reference_query_points.npz'
+        ref_fname = 'outputs/reference_query_points.npz'
         ref_query_pts = np.load(ref_fname, allow_pickle=True)
         return ref_query_pts['gripper'][:n_pts]
 
