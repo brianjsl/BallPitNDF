@@ -4,7 +4,7 @@ from pydrake.all import (
 )
 from omegaconf import DictConfig
 from src.setup import MakePandaManipulationStation
-from src.modules.perception import MergePointClouds
+from src.modules.perception import MergePointClouds, LNDFGrasper
 import logging
 import os
 import random
@@ -176,7 +176,8 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
     merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
     context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
     pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
-    visualize_point_cloud(pc.xyzs())
+    # visualize_point_cloud(pc.xyzs())
+    np.save('outputs/point_cloud.npy', pc.xyzs())
 
     simulator = Simulator(diagram)
 
