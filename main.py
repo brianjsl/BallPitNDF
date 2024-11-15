@@ -9,6 +9,10 @@ import logging
 import os
 import random
 import numpy as np
+from manipulation.station import (
+    DepthImageToPointCloud
+)
+from debug import visualize_camera_images, visualize_depth_images, visualize_point_cloud
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -124,9 +128,11 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         meshcat=meshcat
     )
     station = builder.AddSystem(panda_station)
+    
     plant = station.GetSubsystemByName('plant')
 
-    merge_point_clouds = builder.AddSystem(
+    merge_point_clouds = builder.AddNamedSystem(
+        'merge_point_clouds',
         MergePointClouds(plant, 
                          plant.GetModelInstanceByName('basket'),
                          camera_body_indices=[
@@ -141,6 +147,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         )
     )
 
+
     for i in range(3):
         point_cloud_port = f"camera{i}_point_cloud"
         builder.Connect(panda_station.GetOutputPort(point_cloud_port),
@@ -149,27 +156,28 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     builder.Connect(panda_station.GetOutputPort("body_poses"),
                     merge_point_clouds.GetInputPort("body_poses"))
     
-    context = station.CreateDefaultContext()
-
     # Debug: visualize camera images
-    # import matplotlib.pyplot as plt
-    # plt.figure(figsize=(12, 6))
-    # for i in range(3):
-    #     color_image = station.GetOutputPort(f'camera{i}_rgb_image').Eval(context)
-    #     plt.subplot(1, 3, i+1)
-    #     plt.imshow(color_image.data)
-    #     plt.title(f'Color Image Camera {i}')
-    # plt.show()
-    
+    # visualize_camera_images(station)
+
+    # Debug: visualize depth images
+    # visualize_depth_images(station)
+
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat)
 
-    return panda_station, None, visualizer 
+    return builder.Build(), None, visualizer 
 
 def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
 
     meshcat.Delete()
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
+
+    #debug
+    merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
+    context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
+    pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
+    visualize_point_cloud(pc.xyzs())
+
     simulator = Simulator(diagram)
 
     simulator.AdvanceTo(0.1)
@@ -196,7 +204,6 @@ if __name__ == '__main__':
     )
     parser.add_argument('-n', help='Number of balls to add to box', default=20)
     parser.add_argument('-m', help='Basket ID to use', default=1)
-
     args = parser.parse_args()
     cfg = DictConfig({
         # 'num_balls': args.n,

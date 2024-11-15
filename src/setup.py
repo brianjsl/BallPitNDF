@@ -10,9 +10,20 @@ from pydrake.all import (
     Multiplexer,
     Meshcat,
     MultibodyPlant,
+    DepthRenderCamera,
+    RenderCameraCore,
+    DepthRange,
+    CameraInfo,
+    ClippingRange,
+    RigidTransform,
+    Diagram,
 )
 from manipulation.utils import ConfigureParser
 from manipulation.scenarios import AddRgbdSensors
+from manipulation.station import AddPointClouds
+import numpy as np
+from IPython.display import SVG, display
+import pydot
 
 
 def MakePandaManipulationStation(
@@ -51,10 +62,18 @@ def MakePandaManipulationStation(
     parser.AddModelsFromString(env_directives, ".dmd.yaml")
 
     plant.Finalize()
+
     MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
 
     # Add Cameras
-    AddRgbdSensors(builder, plant, scene_graph, model_instance_prefix=camera_prefix)
+    AddRgbdSensors(
+        builder,
+        plant,
+        scene_graph,
+        also_add_point_clouds=True,
+        model_instance_prefix=camera_prefix,
+        depth_camera=None,
+    )
 
     # create controllers for the panda arm and hand
     panda_arm = plant.GetModelInstanceByName(panda_arm_name)

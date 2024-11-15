@@ -32,8 +32,8 @@ class MergePointClouds(LeafSystem):
         X_B = plant.EvalBodyPoseInWorld(context, basket_body)
         margin = 0.001  # only because simulation is perfect!
         # TODO: change if we change bin size/location
-        a = X_B.multiply([-.3+margin, -.3+margin, 0.015+margin])
-        b = X_B.multiply([.3-margin, .3-0.025-margin, 0.5])
+        a = X_B.multiply([0.2+margin, -1+margin, -0.9+margin])
+        b = X_B.multiply([.8-margin, 1-margin, 0.4])
         # print(a, b)
         self._crop_lower = np.minimum(a, b)
         self._crop_upper = np.maximum(a, b)
@@ -46,7 +46,9 @@ class MergePointClouds(LeafSystem):
     
     def GetPointCloud(self, context, output):
         body_poses = self.get_input_port(
-            self.GetInputPort("body_poses").get_index()).Eval(context)
+            self.GetInputPort("body_poses").get_index()
+        ).Eval(context)
+
         pcd = []
         for i in range(self._num_cameras):
             port = self._camera_ports[i]
