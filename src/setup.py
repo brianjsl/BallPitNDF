@@ -12,7 +12,7 @@ from pydrake.all import (
     MultibodyPlant,
 )
 from manipulation.utils import ConfigureParser
-from omegaconf import DictConfig
+from manipulation.scenarios import AddRgbdSensors
 
 
 def MakePandaManipulationStation(
@@ -22,12 +22,14 @@ def MakePandaManipulationStation(
     panda_arm_name: str = "panda_arm",
     panda_hand_name: str = "panda_hand",
     time_step: float = 1e-4,
+    camera_prefix: str = "camera",
 ):
     """
     Sets up the environment with a panda arm and hand. Returns a diagram with controls for the panda arm and hand.
 
     Args:
-        - robot_directives: string containing the directives for the panda arm and hand
+        - robot_directives: string containing the directives for the panda arm and hand. Add cameras to this
+          directive
         - env_directives: string containing the directives for the environment
         - meshcat: meshcat instance
         - panda_arm_name: name of the panda arm
@@ -50,6 +52,9 @@ def MakePandaManipulationStation(
 
     plant.Finalize()
     MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
+
+    # Add Cameras
+    AddRgbdSensors(builder, plant, scene_graph, model_instance_prefix=camera_prefix)
 
     # create controllers for the panda arm and hand
     panda_arm = plant.GetModelInstanceByName(panda_arm_name)
@@ -203,23 +208,11 @@ def MakePandaManipulationStation(
         desired_state_from_position.get_input_port(),
     )
 
+    # cheat ports
+    builder.ExportOutput(plant.get_body_poses_output_port(), "body_poses")
+    builder.ExportOutput(scene_graph.get_query_output_port(), "query_object")
+
     diagram = builder.Build()
     diagram.set_name("PandaManipulationStation")
 
-    return diagram, plant
-
-
-def visualize_diagram(diagram):
-    """
-    Util to visualize the system diagram
-    """
-    from IPython.display import SVG, display
-    import pydot
-
-    display(
-        SVG(
-            pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=2))[
-                0
-            ].create_svg()
-        )
-    )
+    return diagram

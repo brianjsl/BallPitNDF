@@ -1,9 +1,10 @@
 import argparse
 from pydrake.all import (
-    Meshcat, StartMeshcat, Simulator
+    Meshcat, StartMeshcat, Simulator, DiagramBuilder, Diagram, MeshcatVisualizer
 )
 from omegaconf import DictConfig
 from src.setup import MakePandaManipulationStation
+from src.modules.perception import MergePointClouds
 import logging
 import os
 import random
@@ -13,7 +14,7 @@ class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
         return not record.getMessage().startswith("Differential IK")
 
-def get_directives(cfg: DictConfig):
+def get_directives(cfg: DictConfig) -> tuple[str, str]:
     # description of robot
     robot_directives = """
 directives:
@@ -56,6 +57,51 @@ directives:
     - add_model:
         name: basket
         file: file://{os.getcwd()}/src/assets/basket/basket.sdf
+
+    - add_frame:
+        name: camera0_origin
+        X_PF:
+            base_frame: world
+            rotation: !Rpy {{deg: [-130.0, 0, 0.0]}}
+            translation: [.5, -.6, 0.8]
+
+    - add_model:
+        name: camera0
+        file: package://manipulation/camera_box.sdf
+
+    - add_weld:
+        parent: camera0_origin
+        child: camera0::base
+
+    - add_frame:
+        name: camera1_origin
+        X_PF:
+            base_frame: world
+            rotation: !Rpy {{deg: [-140., 0, 90.0]}}
+            translation: [1.0, 0, 0.8]
+
+    - add_model:
+        name: camera1
+        file: package://manipulation/camera_box.sdf
+
+    - add_weld:
+        parent: camera1_origin
+        child: camera1::base
+
+    - add_frame:
+        name: camera2_origin
+        X_PF:
+            base_frame: world
+            rotation: !Rpy {{deg: [-130., 0, -180.0]}}
+            translation: [.5, .7, .8]
+
+    - add_model:
+        name: camera2
+        file: package://manipulation/camera_box.sdf
+
+    - add_weld:
+        parent: camera2_origin
+        child: camera2::base
 """
     for i in range(cfg.num_balls):
         env_directives += f"""
@@ -68,23 +114,70 @@ directives:
 """
     return robot_directives, env_directives
 
-def pouring_demo(cfg: DictConfig, meshcat: Meshcat):
+def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Diagram, ]:
+    builder = DiagramBuilder()
 
-    meshcat.Delete()
     robot_directives, env_directives = get_directives(cfg)
-    diagram = MakePandaManipulationStation(
+    panda_station = MakePandaManipulationStation(
         robot_directives=robot_directives,
         env_directives=env_directives,
         meshcat=meshcat
     )
+    station = builder.AddSystem(panda_station)
+    plant = station.GetSubsystemByName('plant')
+
+    merge_point_clouds = builder.AddSystem(
+        MergePointClouds(plant, 
+                         plant.GetModelInstanceByName('basket'),
+                         camera_body_indices=[
+                             plant.GetBodyIndices(
+                                 plant.GetModelInstanceByName("camera0"))[0],
+                             plant.GetBodyIndices(
+                                 plant.GetModelInstanceByName("camera1"))[0],
+                             plant.GetBodyIndices(
+                                 plant.GetModelInstanceByName("camera2"))[0],
+                        ],
+                        meshcat=meshcat
+        )
+    )
+
+    for i in range(3):
+        point_cloud_port = f"camera{i}_point_cloud"
+        builder.Connect(panda_station.GetOutputPort(point_cloud_port),
+                        merge_point_clouds.GetInputPort(point_cloud_port))
+    
+    builder.Connect(panda_station.GetOutputPort("body_poses"),
+                    merge_point_clouds.GetInputPort("body_poses"))
+    
+    context = station.CreateDefaultContext()
+
+    # Debug: visualize camera images
+    # import matplotlib.pyplot as plt
+    # plt.figure(figsize=(12, 6))
+    # for i in range(3):
+    #     color_image = station.GetOutputPort(f'camera{i}_rgb_image').Eval(context)
+    #     plt.subplot(1, 3, i+1)
+    #     plt.imshow(color_image.data)
+    #     plt.title(f'Color Image Camera {i}')
+    # plt.show()
+    
+    visualizer = MeshcatVisualizer.AddToBuilder(
+        builder, station.GetOutputPort("query_object"), meshcat)
+
+    return panda_station, None, visualizer 
+
+def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
+
+    meshcat.Delete()
+    diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
     simulator = Simulator(diagram)
 
     simulator.AdvanceTo(0.1)
     meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
-    meshcat.StartRecording()
+    visualizer.StartRecording()
 
     # run as fast as possible
-    simulator.set_target_realtime_rate(0.1)
+    simulator.set_target_realtime_rate(0)
     meshcat.AddButton("Stop Simulation", "Escape")
     print("Press Escape to stop the simulation")
     while meshcat.GetButtonClicks("Stop Simulation") < 1:
@@ -92,9 +185,10 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat):
             raise Exception("Took too long")
         simulator.AdvanceTo(simulator.get_context().get_time() + 2.0)
         # stats = diagram.get_output_port().Eval(simulator.get_context())
-        meshcat.StopRecording()
-    meshcat.PublishRecording()
+        visualizer.StopRecording()
+    visualizer.PublishRecording()
     meshcat.DeleteButton("Stop Simulation")
+    return True
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
