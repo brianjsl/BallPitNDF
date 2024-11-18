@@ -1,3 +1,4 @@
+from pydrake.geometry import StartMeshcat
 from pydrake.all import (
     AddMultibodyPlantSceneGraph,
     DiagramBuilder,
@@ -12,6 +13,7 @@ from pydrake.all import (
     MultibodyPlant,
 )
 from manipulation.utils import ConfigureParser
+from omegaconf import DictConfig
 
 
 def MakePandaManipulationStation(
@@ -204,4 +206,20 @@ def MakePandaManipulationStation(
     diagram = builder.Build()
     diagram.set_name("PandaManipulationStation")
 
-    return diagram
+    return diagram, plant
+
+
+def visualize_diagram(diagram):
+    """
+    Util to visualize the system diagram
+    """
+    from IPython.display import SVG, display
+    import pydot
+
+    display(
+        SVG(
+            pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=2))[
+                0
+            ].create_svg()
+        )
+    )
