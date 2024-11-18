@@ -66,6 +66,9 @@ directives:
     - add_model:
         name: basket
         file: file://{os.getcwd()}/src/assets/basket/basket.sdf
+        default_free_body_pose:
+            basket:
+                translation: [-0.25, -0.25, 0.0]
 
     - add_frame:
         name: camera0_origin

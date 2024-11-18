@@ -11,6 +11,10 @@ drake = "^1.33.0"
 ipykernel = "^6.29.5"
 lxml = "^5.3.0"
 numpy = "1.26.4"
+yacs = "^0.1.8"
+omegaconf = "^2.3.0"
+torch = "^2.5.1"
+opencv-python = "^4.10.0.84"
 
 
 [build-system]
