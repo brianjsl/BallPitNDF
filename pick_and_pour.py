@@ -202,7 +202,10 @@ def MakePouringStation(meshcat: Meshcat, cfg: DictConfig):
     X_WG = plant.CalcRelativeTransform(
         context, frame_A=plant.world_frame(), frame_B=gripper_frame
     )
-    X_WGoal = X_WG.multiply(RigidTransform(R=RotationMatrix.MakeYRotation(np.pi / 4)))
+    X_WGoal = X_WG.multiply(RigidTransform())
+    X_WGoal_End = X_WG.multiply(
+        RigidTransform(R=RotationMatrix.MakeXRotation(np.pi / 2))
+    )
 
     # X_WGoal = X_WG.multiply(RigidTransform(R=RotationMatrix.MakeYRotation(np.pi / 1.75)))
     # X_WGoal = X_WBPreGrasp.multiply(
@@ -217,23 +220,28 @@ def MakePouringStation(meshcat: Meshcat, cfg: DictConfig):
     AddMeshcatTriad(meshcat, path="/X_WBGrasp", X_PT=X_WBGrasp)
     AddMeshcatTriad(meshcat, path="/X_WBasket", X_PT=X_WBasket)
     AddMeshcatTriad(meshcat, path="/X_WGinit", X_PT=initial_pose)
+    AddMeshcatTriad(meshcat, path="/X_WGoal", X_PT=X_WGoal)
+    AddMeshcatTriad(meshcat, path="/X_WGoal_End", X_PT=X_WGoal_End)
 
     # create trajectory
     trajectory = PiecewisePose.MakeLinear(
-        times=[0, 5.0, 10.0, 13.0, 17.0, 20.0, 25.0],
+        times=[0, 2.0, 5.0, 7.0, 10.0, 12.0, 15.0],
         poses=[
             X_WGinit,
             X_WBPreGrasp,
             X_WBGrasp,
             X_WBGrasp,
             X_WBPreGrasp,
-            X_WGinit,
             X_WGoal,
+            # X_WGoal,
+            X_WGoal_End,
+            # X_WGoal_End,
+            # X_WGinit,
         ],
     )
     traj_V_G = trajectory.MakeDerivative()
 
-    times = [0, 10.0, 12.0]
+    times = [0, 4.5, 5.5]
     initial_positions = np.array([0.0, 0.0])
     final_positions2 = np.array([0, 0])
     final_positions = np.array([-0.1, 0.1])
@@ -358,7 +366,7 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
     )
 
     meshcat.StartRecording()
-    simulator.AdvanceTo(35.0)
+    simulator.AdvanceTo(20.0)
     meshcat.PublishRecording()
 
     import time
@@ -393,7 +401,7 @@ if __name__ == "__main__":
     cfg = DictConfig(
         {
             # 'num_balls': args.n,
-            "num_balls": 0,
+            "num_balls": 1,
             "basket_id": args.m,
             "max_time": 60.0,
         }
