@@ -15,16 +15,27 @@ from pydrake.all import (
     LeafSystem,
     Meshcat,
     System, 
-    RigidTransform
+    RigidTransform,
+    AbstractValue,
+    RotationMatrix
 )
 
 class LNDFGrasper(LeafSystem):
     def __init__(self, cfg: DictConfig, plant: System, meshcat: Meshcat):
         super().__init__()
         self._meshcat = meshcat
-        self.use_random_rotation = False
         self.cut_pcd = False 
         self.local_ndf = LocalNDF(cfg)
+
+        self.DeclareAbstractInputPort(
+            'merged_point_cloud', AbstractValue.Make(PointCloud(0))
+        )
+        
+        self.DeclareAbstractOutputPort(
+            'grasp_pose', lambda: AbstractValue.Make(RigidTransform()),
+            self.get_grasp
+        )
+        self.load_demos()
 
     def load_demos(self, demo_exp='lndf_mug_handle_demos', n_demos=10):
         demo_load_dir = osp.join('src', 'demos', demo_exp)
@@ -81,12 +92,18 @@ class LNDFGrasper(LeafSystem):
                 new_pcd.append(pt)
         return np.vstack(new_pcd)
 
-    def get_grasp(self, point_cloud: PointCloud):
+    def get_grasp(self, context, output):
+        point_cloud = self.get_input_port(
+            self.GetInputPort('merged_point_cloud').get_index()
+        ).Eval(context)
+
         point_cloud_npy = point_cloud.xyzs().T
-        pose_mats, best_idx, intermediates = self.local_ndf.get_pose(point_cloud_npy, self.local_ndf.viz_path)
+        pose_mats, best_idx, _ = self.local_ndf.get_pose(point_cloud_npy, self.local_ndf.viz_path)
         idx = best_idx
         best_pose_mat = pose_mats[idx]
 
         final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat)
 
-        return RigidTransform(best_pose_mat), final_query_pts
+        X_WB = RigidTransform(best_pose_mat)
+
+        output.set_value(X_WB)

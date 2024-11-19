@@ -26,6 +26,11 @@ station for the Franka Panda. This is then used in `main.py` to create a diagram
 * `merge_point_clouds.py`: Introuces the `MergePointClouds` system which combines the point clouds of a station 
 into a single point cloud. For now it only concatenates and assumes calibrated point clouds (TODO: add camera
 calibration for uncalibrated cameras using ICP)
+* `grasper.py`: Contains the `LNDFGrasper` system that does an energy optimization to find suitable grasp poses 
+to grasp objects (such as the basket). The main call is to `pose_selector` which is in the `lndf_robot` module.
+
+### LNDF Robot
+* `
 
 ### Debugging
 
@@ -33,5 +38,5 @@ All debug utilities are in `debug/`. The main files are:
 * `visualize_utils.py` which introuduces `visualize_camera_images` and `visualize_depth_images` to see the camera 
 results from a built station, `visualize_point_cloud` which plots a point cloud (given as an 3xN numpy array) in 
 plotly, and `visualize_diagram` which plots the system diagram of a diagram (without need for iPython) along with the
-ability to save the SVG file onto your computer.
+ability to save the SVG file onto your computer. `draw_grasp_candidate` contains 
 

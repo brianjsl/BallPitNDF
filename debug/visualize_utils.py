@@ -4,12 +4,22 @@ import matplotlib.pyplot as plt
 from pydrake.all import (
     System,
     Diagram,
+    Meshcat,
+    DiagramBuilder,
+    MeshcatVisualizer,
+    MeshcatVisualizerParams
 )
 import numpy as np
 import trimesh
 from src.modules.lndf_robot.utils.plotly_save import plot3d
 from plotly.offline import plot
 import plotly.graph_objects as go
+from manipulation.scenarios import (
+    AddMultibodyTriad,
+    AddMultibodyPlantSceneGraph,
+    Parser,
+    ConfigureParser,
+)
 
 def visualize_camera_images(station: System):
     context = station.CreateDefaultContext()
@@ -76,3 +86,25 @@ def visualize_diagram(diagram: Diagram, output_filename=None):
             print("Auto-opening SVG file is not supported on this OS.")
     except Exception as e:
         print(f"Could not open SVG file: {e}")
+
+def draw_grasp_candidate(meshcat: Meshcat, X_G, prefix="gripper", draw_frames=True, refresh=False):
+    if refresh:
+        meshcat.Delete()
+    builder = DiagramBuilder()
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
+    parser = Parser(plant)
+    ConfigureParser(parser)
+    gripper = parser.AddModelsFromUrl(
+        "package://manipulation/schunk_wsg_50_welded_fingers.sdf"
+    )
+    plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("body"), X_G)
+    if draw_frames:
+        AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
+    plant.Finalize()
+
+    params = MeshcatVisualizerParams()
+    params.prefix = prefix
+    meshcat_vis = MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat, params)
+    diagram = builder.Build()
+    context = diagram.CreateDefaultContext()
+    diagram.ForcedPublish(context)

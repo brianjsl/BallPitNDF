@@ -12,7 +12,7 @@ import numpy as np
 from manipulation.station import (
     DepthImageToPointCloud
 )
-from debug import visualize_camera_images, visualize_depth_images, visualize_point_cloud
+from debug import visualize_camera_images, visualize_depth_images, visualize_point_cloud, draw_grasp_candidate
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -147,6 +147,53 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         )
     )
 
+    lndf_config = {
+        'lndf': {
+            'eval_dir': 'outputs',
+            'pose_optimizer': {
+                'opt_type': 'LNDF',
+                'args': {
+                    'opt_iterations': 500,
+                    'rand_translate': True,
+                    'use_tsne': False,
+                    'M_override': 20,
+                    'trans_range': [0.1, 0.1, 0.2],
+                    'trans_scale': [0, 0, 0.4]
+                }
+            },
+            'query_point': {
+                'type': 'RECT',
+                'args': {
+                    'n_pts': 1000,
+                    'x': 0.08, 
+                    'y': 0.04,
+                    'z1': 0.05,
+                    'z2': 0.02
+                }
+            },
+            'model': {
+                'type': 'CONV_OCC',
+                'args': {
+                    'latent_dim': 128,  # Number of voxels in convolutional occupancy network
+                    'model_type': 'pointnet',  # Encoder type
+                    'return_features': True,  # Return latent features for evaluation
+                    'sigmoid': False,  # Use sigmoid activation on last layer
+                    'acts': 'last',  # Return last activations of occupancy network
+                },
+                'ckpt': 'lndf_weights.pth'
+            }
+        }
+    }
+
+
+    grasper = builder.AddNamedSystem(
+        'grasper', 
+        LNDFGrasper(lndf_config, plant, meshcat)
+    )
+
+    builder.Connect(merge_point_clouds.GetOutputPort('point_cloud'),
+                    grasper.GetInputPort('merged_point_cloud'))
+
 
     for i in range(3):
         point_cloud_port = f"camera{i}_point_cloud"
@@ -173,11 +220,15 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
 
     #debug
-    merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
-    context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
-    pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
-    # visualize_point_cloud(pc.xyzs())
-    np.save('outputs/point_cloud.npy', pc.xyzs())
+
+    grasper = diagram.GetSubsystemByName('grasper')
+    context = grasper.GetMyContextFromRoot(diagram.CreateDefaultContext())
+    grasp = grasper.GetOutputPort('grasp_pose').Eval(context)
+    draw_grasp_candidate(meshcat, grasp)
+    # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
+    # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
+    # pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
+    # np.save('outputs/point_cloud.npy', pc.xyzs())
 
     simulator = Simulator(diagram)
 
