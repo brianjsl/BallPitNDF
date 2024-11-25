@@ -17,7 +17,7 @@ from pydrake.all import (
     System, 
     RigidTransform,
     AbstractValue,
-    RotationMatrix
+    RotationMatrix,
 )
 
 class LNDFGrasper(LeafSystem):
@@ -104,6 +104,8 @@ class LNDFGrasper(LeafSystem):
 
         final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat)
 
-        X_WB = RigidTransform(best_pose_mat)
+        DrakeTransform = RigidTransform(RotationMatrix.MakeZRotation(-np.pi / 2), [-0.2, 0, 0.07])
+
+        X_WB = RigidTransform(best_pose_mat) @  DrakeTransform
 
         output.set_value(X_WB)

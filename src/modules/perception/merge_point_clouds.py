@@ -6,7 +6,7 @@ from pydrake.all import (
 )
 
 class MergePointClouds(LeafSystem):
-    def __init__(self, plant, basket, camera_body_indices, meshcat):
+    def __init__(self, plant, bowl, camera_body_indices, meshcat):
         super().__init__()
         self._meshcat = meshcat
         mug_point_cloud = AbstractValue.Make(PointCloud(0))
@@ -28,8 +28,8 @@ class MergePointClouds(LeafSystem):
             self.GetPointCloud)
 
         context = plant.CreateDefaultContext()
-        basket_body = plant.GetBodyByName('basket', basket)
-        X_B = plant.EvalBodyPoseInWorld(context, basket_body)
+        bowl_body = plant.GetBodyByName('bowl_body_link', bowl)
+        X_B = plant.EvalBodyPoseInWorld(context, bowl_body)
         margin = 0.001  # only because simulation is perfect!
         # TODO: change if we change bin size/location
         a = X_B.multiply([0.2+margin, -1+margin, -0.9+margin])

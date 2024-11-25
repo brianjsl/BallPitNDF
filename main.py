@@ -59,14 +59,15 @@ directives:
         X_PC:
             translation: [0, 0, -0.05]
     - add_model:
-        name: basket
-        file: file://{os.getcwd()}/src/assets/basket/basket.sdf
+        name: bowl 
+        file: file://{os.getcwd()}/src/assets/bowl/bowl.sdf
+
 
     - add_frame:
         name: camera0_origin
         X_PF:
             base_frame: world
-            rotation: !Rpy {{deg: [-130.0, 0, 0.0]}}
+            rotation: !Rpy {{deg: [-140.0, 0, 0.0]}}
             translation: [.5, -.6, 0.8]
 
     - add_model:
@@ -114,7 +115,7 @@ directives:
         file: file://{os.getcwd()}/src/assets/sphere/sphere.sdf
         default_free_body_pose:
             sphere:
-                translation: [{0.5 + np.random.choice([-1,1])*0.03 + 0.1*(random.random()-0.5)}, {np.random.choice([-1,1])*0.03 + 0.1*(random.random()-0.5)}, 0.5]
+                translation: [{0.5 + np.random.choice([-1,1])*0.01 + 0.1*(random.random()-0.5)}, {np.random.choice([-1,1])*0.01 + 0.1*(random.random()-0.5)}, 0.5]
 """
     return robot_directives, env_directives
 
@@ -134,7 +135,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     merge_point_clouds = builder.AddNamedSystem(
         'merge_point_clouds',
         MergePointClouds(plant, 
-                         plant.GetModelInstanceByName('basket'),
+                         plant.GetModelInstanceByName('bowl'),
                          camera_body_indices=[
                              plant.GetBodyIndices(
                                  plant.GetModelInstanceByName("camera0"))[0],
@@ -157,8 +158,6 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
                     'rand_translate': True,
                     'use_tsne': False,
                     'M_override': 20,
-                    'trans_range': [0.1, 0.1, 0.2],
-                    'trans_scale': [0, 0, 0.4]
                 }
             },
             'query_point': {
@@ -168,7 +167,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
                     'x': 0.08, 
                     'y': 0.04,
                     'z1': 0.05,
-                    'z2': 0.02
+                    'z2': 0.02,
                 }
             },
             'model': {
@@ -232,7 +231,7 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
 
     simulator = Simulator(diagram)
 
-    simulator.AdvanceTo(0.1)
+    simulator.AdvanceTo(0.4)
     meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
     visualizer.StartRecording()
 
@@ -255,12 +254,12 @@ if __name__ == '__main__':
         prog='Local NDF Pouring Robot'
     )
     parser.add_argument('-n', help='Number of balls to add to box', default=20)
-    parser.add_argument('-m', help='Basket ID to use', default=1)
+    parser.add_argument('-m', help='Bowl ID to use', default=1)
     args = parser.parse_args()
     cfg = DictConfig({
         # 'num_balls': args.n,
         'num_balls': 5,
-        'basket_id': args.m,
+        'bowl_id': args.m,
         'max_time': 60.0,
     })
 
