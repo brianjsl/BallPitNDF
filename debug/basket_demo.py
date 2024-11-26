@@ -1,15 +1,15 @@
-from src.modules.lndf_robot.eval.pose_selector import LocalNDF 
+from src.modules.grasping.pose_selector import LocalNDF 
 from omegaconf import DictConfig
 import os
 import os.path as osp
 import numpy as np
 import random
-from src.modules.lndf_robot.utils import path_util, util, torch_util
+from src.modules.grasping.lndf_robot.utils import path_util, util, torch_util
 import trimesh
 from scipy.spatial.transform import Rotation as R
-from src.modules.lndf_robot.utils.plotly_save import multiplot
+from src.modules.grasping.lndf_robot.utils.plotly_save import multiplot
 import plotly.express as px
-from src.modules.lndf_robot.eval.demo_io import DemoIO
+from src.modules.grasping.lndf_robot.eval.demo_io import DemoIO
 from plotly.offline import iplot
 
 os.environ['CKPT_DIR'] = 'src/modules/lndf_robot/ckpts'

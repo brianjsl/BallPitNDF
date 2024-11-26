@@ -1,0 +1,1 @@
+from .vnn_occupancy_net_pointnet_dgcnn import VNNOccNet

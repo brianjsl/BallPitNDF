@@ -7,11 +7,13 @@ from pydrake.all import (
     Meshcat,
     DiagramBuilder,
     MeshcatVisualizer,
-    MeshcatVisualizerParams
+    MeshcatVisualizerParams,
+    PointCloud,
+    Rgba
 )
 import numpy as np
 import trimesh
-from src.modules.lndf_robot.utils.plotly_save import plot3d
+from src.modules.grasping.lndf_robot.utils.plotly_save import plot3d
 from plotly.offline import plot
 import plotly.graph_objects as go
 from manipulation.scenarios import (
@@ -108,3 +110,11 @@ def draw_grasp_candidate(meshcat: Meshcat, X_G, prefix="gripper", draw_frames=Tr
     diagram = builder.Build()
     context = diagram.CreateDefaultContext()
     diagram.ForcedPublish(context)
+
+def draw_query_pts(meshcat: Meshcat, query_pts: np.ndarray) -> None:
+    '''
+    Draws a set of query points in meshcat.
+    '''
+    cloud = PointCloud(query_pts.shape[0])
+    cloud.mutable_xyzs()[:] = query_pts.T
+    meshcat.SetObject('query_pts', cloud, point_size=0.01, rgba=Rgba(1.0, 0, 0))
