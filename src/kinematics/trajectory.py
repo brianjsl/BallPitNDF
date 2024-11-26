@@ -75,6 +75,10 @@ class TrajectoryEvaluator(LeafSystem):
     def CalcOutput(self, context, output):
         t = context.get_time()
         trajectory = self.trajectory_input.Eval(context)
-        spatial_velocity = trajectory.value(t)
-        print("t: ", t, "spatial_velocity: ", spatial_velocity)
+
+        if t < trajectory.end_time():
+            spatial_velocity = trajectory.value(t)
+        else:
+            spatial_velocity = np.zeros(6)
+        
         output.set_value(spatial_velocity)

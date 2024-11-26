@@ -18,6 +18,7 @@ class PandaGraspTrajectoryPlanner(LeafSystem):
         self.plant = plant
         self.context = plant.CreateDefaultContext()
         self.panda_link8_body = plant.GetBodyByName("panda_link8")
+        self.panda_hand_body = plant.GetBodyByName("panda_hand")
 
         self.grasp_input_port = self.DeclareAbstractInputPort(
             "grasp_pose", AbstractValue.Make(RigidTransform())
@@ -27,9 +28,15 @@ class PandaGraspTrajectoryPlanner(LeafSystem):
             lambda: AbstractValue.Make(PiecewisePose()),
             self.CalcPandaArmTrajectory,
         )
+        self._traj = None
 
     def CalcPandaArmTrajectory(self, context, output):
-        X_WH_Init = self.plant.EvalBodyPoseInWorld(self.context, self.panda_link8_body)
+        if self._traj is not None:
+            output.set_value(self._traj)
+            return
+
+        # X_WH_Init = self.plant.EvalBodyPoseInWorld(self.context, self.panda_link8_body)
+        X_WH_Init = self.plant.EvalBodyPoseInWorld(self.context, self.panda_hand_body)
         X_WG = self.grasp_input_port.Eval(context)
 
         X_GPregrasp = RigidTransform(
@@ -42,24 +49,24 @@ class PandaGraspTrajectoryPlanner(LeafSystem):
                     ]
                 )
             ),
-            p=[0, -0.25, 0.25],
+            p=[0, -0.2, 0],
+            # p=[0, -0.25, 0.25],
         )
         X_WPregrasp = X_WG.multiply(X_GPregrasp)
-        # goal_pose = RigidTransform(
-        #     p=X_WH_Init.translation() + np.array([0, 0, -0.1]), R=X_WH_Init.rotation()
+        # X_WPregrasp = RigidTransform(
+        #     R=X_WH_Init.rotation(),
+        #     p=X_WH_Init.translation() - np.array([0, 0, 0.05]),
+        #     # p=X_WH_Init.translation() - np.array([0, 0, 0.05]),
         # )
-        X_WPregrasp = RigidTransform(
-            R=X_GPregrasp.rotation(),
-            p=X_WPregrasp.translation(),
-        )
-   
+
         trajectory = PiecewisePose.MakeLinear(
-            times=[0, 0.5],
+            times=[0, 1.0],
             poses=[X_WH_Init, X_WPregrasp],
         )
 
         # spatial velocity
         trajectory_VG = trajectory.MakeDerivative()
+        self._traj = trajectory_VG
 
         output.set_value(trajectory_VG)
 

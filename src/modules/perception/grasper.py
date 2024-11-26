@@ -42,7 +42,7 @@ class LNDFGrasper(LeafSystem):
         self.DeclareAbstractOutputPort(
             "grasp_pose", lambda: AbstractValue.Make(RigidTransform()), self.get_grasp
         )
-        self.load_demos()
+        # self.load_demos()
 
     def load_demos(self, demo_exp="lndf_mug_handle_demos", n_demos=10):
         demo_load_dir = osp.join("src", "demos", demo_exp)
