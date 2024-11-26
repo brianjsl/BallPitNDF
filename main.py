@@ -1,6 +1,11 @@
 import argparse
 from pydrake.all import (
-    Meshcat, StartMeshcat, Simulator, DiagramBuilder, Diagram, MeshcatVisualizer
+    Meshcat,
+    StartMeshcat,
+    Simulator,
+    DiagramBuilder,
+    Diagram,
+    MeshcatVisualizer,
 )
 from omegaconf import DictConfig
 from src.setup import MakePandaManipulationStation
@@ -9,14 +14,19 @@ import logging
 import os
 import random
 import numpy as np
-from manipulation.station import (
-    DepthImageToPointCloud
+from manipulation.station import DepthImageToPointCloud
+from debug import (
+    visualize_camera_images,
+    visualize_depth_images,
+    visualize_point_cloud,
+    draw_grasp_candidate,
 )
-from debug import visualize_camera_images, visualize_depth_images, visualize_point_cloud, draw_grasp_candidate
+
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
         return not record.getMessage().startswith("Differential IK")
+
 
 def get_directives(cfg: DictConfig) -> tuple[str, str]:
     # description of robot
@@ -119,89 +129,94 @@ directives:
 """
     return robot_directives, env_directives
 
-def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Diagram, ]:
+
+def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
+    Diagram,
+    Diagram,
+]:
     builder = DiagramBuilder()
 
     robot_directives, env_directives = get_directives(cfg)
     panda_station = MakePandaManipulationStation(
         robot_directives=robot_directives,
         env_directives=env_directives,
-        meshcat=meshcat
+        meshcat=meshcat,
     )
     station = builder.AddSystem(panda_station)
-    
-    plant = station.GetSubsystemByName('plant')
+
+    plant = station.GetSubsystemByName("plant")
 
     merge_point_clouds = builder.AddNamedSystem(
-        'merge_point_clouds',
-        MergePointClouds(plant, 
-                         plant.GetModelInstanceByName('bowl'),
-                         camera_body_indices=[
-                             plant.GetBodyIndices(
-                                 plant.GetModelInstanceByName("camera0"))[0],
-                             plant.GetBodyIndices(
-                                 plant.GetModelInstanceByName("camera1"))[0],
-                             plant.GetBodyIndices(
-                                 plant.GetModelInstanceByName("camera2"))[0],
-                        ],
-                        meshcat=meshcat
-        )
+        "merge_point_clouds",
+        MergePointClouds(
+            plant,
+            plant.GetModelInstanceByName("bowl"),
+            camera_body_indices=[
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
+            ],
+            meshcat=meshcat,
+        ),
     )
 
     lndf_config = {
-        'lndf': {
-            'eval_dir': 'outputs',
-            'pose_optimizer': {
-                'opt_type': 'LNDF',
-                'args': {
-                    'opt_iterations': 500,
-                    'rand_translate': True,
-                    'use_tsne': False,
-                    'M_override': 20,
-                }
-            },
-            'query_point': {
-                'type': 'RECT',
-                'args': {
-                    'n_pts': 1000,
-                    'x': 0.08, 
-                    'y': 0.04,
-                    'z1': 0.05,
-                    'z2': 0.02,
-                }
-            },
-            'model': {
-                'type': 'CONV_OCC',
-                'args': {
-                    'latent_dim': 128,  # Number of voxels in convolutional occupancy network
-                    'model_type': 'pointnet',  # Encoder type
-                    'return_features': True,  # Return latent features for evaluation
-                    'sigmoid': False,  # Use sigmoid activation on last layer
-                    'acts': 'last',  # Return last activations of occupancy network
+        "lndf": {
+            "eval_dir": "outputs",
+            "pose_optimizer": {
+                "opt_type": "LNDF",
+                "args": {
+                    "opt_iterations": 500,
+                    "rand_translate": True,
+                    "use_tsne": False,
+                    "M_override": 20,
                 },
-                'ckpt': 'lndf_weights.pth'
-            }
+            },
+            "query_point": {
+                "type": "RECT",
+                "args": {
+                    "n_pts": 1000,
+                    "x": 0.08,
+                    "y": 0.04,
+                    "z1": 0.05,
+                    "z2": 0.02,
+                },
+            },
+            "model": {
+                "type": "CONV_OCC",
+                "args": {
+                    "latent_dim": 128,  # Number of voxels in convolutional occupancy network
+                    "model_type": "pointnet",  # Encoder type
+                    "return_features": True,  # Return latent features for evaluation
+                    "sigmoid": False,  # Use sigmoid activation on last layer
+                    "acts": "last",  # Return last activations of occupancy network
+                },
+                "ckpt": "lndf_weights.pth",
+            },
         }
     }
 
-
     grasper = builder.AddNamedSystem(
-        'grasper', 
-        LNDFGrasper(lndf_config, plant, meshcat)
+        "grasper", LNDFGrasper(lndf_config, plant, meshcat)
     )
 
-    builder.Connect(merge_point_clouds.GetOutputPort('point_cloud'),
-                    grasper.GetInputPort('merged_point_cloud'))
-
+    builder.Connect(
+        merge_point_clouds.GetOutputPort("point_cloud"),
+        grasper.GetInputPort("merged_point_cloud"),
+    )
 
     for i in range(3):
         point_cloud_port = f"camera{i}_point_cloud"
-        builder.Connect(panda_station.GetOutputPort(point_cloud_port),
-                        merge_point_clouds.GetInputPort(point_cloud_port))
-    
-    builder.Connect(panda_station.GetOutputPort("body_poses"),
-                    merge_point_clouds.GetInputPort("body_poses"))
-    
+        builder.Connect(
+            panda_station.GetOutputPort(point_cloud_port),
+            merge_point_clouds.GetInputPort(point_cloud_port),
+        )
+
+    builder.Connect(
+        panda_station.GetOutputPort("body_poses"),
+        merge_point_clouds.GetInputPort("body_poses"),
+    )
+
     # Debug: visualize camera images
     # visualize_camera_images(station)
 
@@ -209,20 +224,22 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     # visualize_depth_images(station)
 
     visualizer = MeshcatVisualizer.AddToBuilder(
-        builder, station.GetOutputPort("query_object"), meshcat)
+        builder, station.GetOutputPort("query_object"), meshcat
+    )
 
-    return builder.Build(), None, visualizer 
+    return builder.Build(), None, visualizer
+
 
 def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
 
     meshcat.Delete()
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
 
-    #debug
+    # debug
 
-    grasper = diagram.GetSubsystemByName('grasper')
+    grasper = diagram.GetSubsystemByName("grasper")
     context = grasper.GetMyContextFromRoot(diagram.CreateDefaultContext())
-    grasp = grasper.GetOutputPort('grasp_pose').Eval(context)
+    grasp = grasper.GetOutputPort("grasp_pose").Eval(context)
     draw_grasp_candidate(meshcat, grasp)
     # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
     # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
@@ -249,21 +266,22 @@ def pouring_demo(cfg: DictConfig, meshcat: Meshcat) -> bool:
     meshcat.DeleteButton("Stop Simulation")
     return True
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        prog='Local NDF Pouring Robot'
-    )
-    parser.add_argument('-n', help='Number of balls to add to box', default=20)
-    parser.add_argument('-m', help='Bowl ID to use', default=1)
-    args = parser.parse_args()
-    cfg = DictConfig({
-        # 'num_balls': args.n,
-        'num_balls': 5,
-        'bowl_id': args.m,
-        'max_time': 60.0,
-    })
 
-    logging.getLogger('drake').addFilter(NoDiffIKWarnings())
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog="Local NDF Pouring Robot")
+    parser.add_argument("-n", help="Number of balls to add to box", default=20)
+    parser.add_argument("-m", help="Bowl ID to use", default=1)
+    args = parser.parse_args()
+    cfg = DictConfig(
+        {
+            # 'num_balls': args.n,
+            "num_balls": 5,
+            "bowl_id": args.m,
+            "max_time": 60.0,
+        }
+    )
+
+    logging.getLogger("drake").addFilter(NoDiffIKWarnings())
 
     meshcat = StartMeshcat()
     pouring_demo(cfg, meshcat)
