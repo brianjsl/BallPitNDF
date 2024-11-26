@@ -1,6 +1,11 @@
 import argparse
 from pydrake.all import (
-    Meshcat, StartMeshcat, Simulator, DiagramBuilder, Diagram, MeshcatVisualizer
+    Meshcat,
+    StartMeshcat,
+    Simulator,
+    DiagramBuilder,
+    Diagram,
+    MeshcatVisualizer,
 )
 from omegaconf import DictConfig
 from src.stations.teleop_station import MakePandaManipulationStation, get_directives
@@ -29,45 +34,47 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     panda_station = MakePandaManipulationStation(
         robot_directives=robot_directives,
         env_directives=env_directives,
-        meshcat=meshcat
+        meshcat=meshcat,
     )
     station = builder.AddSystem(panda_station)
-    
-    plant = station.GetSubsystemByName('plant')
+
+    plant = station.GetSubsystemByName("plant")
 
     merge_point_clouds = builder.AddNamedSystem(
-        'merge_point_clouds',
-        MergePointClouds(plant, 
-                         plant.GetModelInstanceByName('bowl'),
-                         camera_body_indices=[
-                             plant.GetBodyIndices(
-                                 plant.GetModelInstanceByName("camera0"))[0],
-                             plant.GetBodyIndices(
-                                 plant.GetModelInstanceByName("camera1"))[0],
-                             plant.GetBodyIndices(
-                                 plant.GetModelInstanceByName("camera2"))[0],
-                        ],
-                        meshcat=meshcat
-        )
+        "merge_point_clouds",
+        MergePointClouds(
+            plant,
+            plant.GetModelInstanceByName("bowl"),
+            camera_body_indices=[
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
+            ],
+            meshcat=meshcat,
+        ),
     )
 
     grasper = builder.AddNamedSystem(
-        'grasper', 
-        LNDFGrasper(lndf_config, plant, meshcat)
+        "grasper", LNDFGrasper(lndf_config, plant, meshcat)
     )
 
-    builder.Connect(merge_point_clouds.GetOutputPort('point_cloud'),
-                    grasper.GetInputPort('merged_point_cloud'))
-
+    builder.Connect(
+        merge_point_clouds.GetOutputPort("point_cloud"),
+        grasper.GetInputPort("merged_point_cloud"),
+    )
 
     for i in range(3):
         point_cloud_port = f"camera{i}_point_cloud"
-        builder.Connect(panda_station.GetOutputPort(point_cloud_port),
-                        merge_point_clouds.GetInputPort(point_cloud_port))
-    
-    builder.Connect(panda_station.GetOutputPort("body_poses"),
-                    merge_point_clouds.GetInputPort("body_poses"))
-    
+        builder.Connect(
+            panda_station.GetOutputPort(point_cloud_port),
+            merge_point_clouds.GetInputPort(point_cloud_port),
+        )
+
+    builder.Connect(
+        panda_station.GetOutputPort("body_poses"),
+        merge_point_clouds.GetInputPort("body_poses"),
+    )
+
     # Debug: visualize camera images
     # visualize_camera_images(station)
 
@@ -75,9 +82,11 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     # visualize_depth_images(station)
 
     visualizer = MeshcatVisualizer.AddToBuilder(
-        builder, station.GetOutputPort("query_object"), meshcat)
+        builder, station.GetOutputPort("query_object"), meshcat
+    )
 
-    return builder.Build(), None, visualizer 
+    return builder.Build(), None, visualizer
+
 
 @hydra.main(config_path='src/config', config_name='pouring')
 def pouring_demo(cfg: DictConfig) -> bool:
@@ -85,7 +94,7 @@ def pouring_demo(cfg: DictConfig) -> bool:
 
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
 
-    #debug
+    # debug
 
     # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
     # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())

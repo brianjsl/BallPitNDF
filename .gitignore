@@ -166,3 +166,6 @@ src/modules/lndf_robot/ckpts
 src/demos
 debug_viz
 outputs
+weights/
+ckpts/
+pytorch_scatter/
