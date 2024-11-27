@@ -34,6 +34,7 @@ class LNDFGrasper(LeafSystem):
         self._meshcat = meshcat
         self.cut_pcd = False
         self.local_ndf = LocalNDF(cfg)
+        self.pc_sample_pts = cfg.pc_sample_pts
         self.debug_pose = debug_pose
 
         self.DeclareAbstractInputPort(
@@ -110,20 +111,20 @@ class LNDFGrasper(LeafSystem):
             self.GetInputPort("merged_point_cloud").get_index()
         ).Eval(context)
 
-        point_cloud_npy = point_cloud.xyzs().T
+        point_cloud_npy = point_cloud.xyzs().T * 0.5
+        # point_cloud_npy = point_cloud_npy[np.random.choice(point_cloud_npy.shape[0], self.pc_sample_pts, replace=True), :]
+        # fig = px.scatter_3d(x = point_cloud_npy[:, 0], y=point_cloud_npy[:, 1], z=point_cloud_npy[:, 2])
+        # fig.show()
         pose_mats, best_idx, _ = self.local_ndf.get_pose(
             point_cloud_npy, self.local_ndf.viz_path
         )
         idx = best_idx
-        best_pose_mat = pose_mats[idx]
+        best_pose_mat = pose_mats[idx] * 2
 
-        final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat)
-
-        # switch from pybullet coordinate system to drake coordinate system
-        DrakeCoordTransform = RigidTransform(RotationMatrix.MakeXRotation(np.pi / 2) @ RotationMatrix.MakeYRotation(np.pi / 2))
+        final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat) 
 
         # offset to go from end effector pose to gripper
         offset_transform = RigidTransform([0, 0, -0.1])
-        X_WB = RigidTransform(best_pose_mat) @ offset_transform @ DrakeCoordTransform
+        X_WB = RigidTransform(best_pose_mat) @ offset_transform
 
         output.set_value((X_WB, final_query_pts))

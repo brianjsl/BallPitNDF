@@ -24,7 +24,7 @@ class LocalNDF:
         self.query_points = self._create_query_pts(self.query_point_cfg['type'], self.query_point_cfg['args'])
 
         #generate eval_dir
-        self.eval_dir = osp.join(os.getcwd(), lndf_cfg['eval_dir'])
+        self.eval_dir = osp.join(get_original_cwd(), lndf_cfg['eval_dir'])
         os.makedirs(self.eval_dir, exist_ok=True)
 
         #create optimizer

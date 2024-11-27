@@ -70,15 +70,18 @@ directives:
         X_PC:
             translation: [0, 0, -0.05]
     - add_model:
-        name: bowl 
-        file: file://{get_original_cwd()}/src/assets/bowl/bowl.sdf
-
+        name: basket 
+        file: file://{get_original_cwd()}/src/assets/wooden_basket/wooden_basket.sdf
+        default_free_body_pose:
+            basket_body_link:
+                translation: [0.5, 0, 0]
+                rotation: !Rpy {{ deg: [90, 0, 0]}}
 
     - add_frame:
         name: camera0_origin
         X_PF:
             base_frame: world
-            rotation: !Rpy {{deg: [-140.0, 0, 0.0]}}
+            rotation: !Rpy {{deg: [-130.0, 0, 0.0]}}
             translation: [.5, -.6, 0.8]
 
     - add_model:
@@ -118,6 +121,21 @@ directives:
     - add_weld:
         parent: camera2_origin
         child: camera2::base
+
+    - add_frame:
+        name: camera3_origin
+        X_PF:
+            base_frame: world
+            rotation: !Rpy {{deg: [0, 0, 90.0]}}
+            translation: [.5, 0, -.5] 
+
+    - add_model:
+        name: camera3
+        file: package://manipulation/camera_box.sdf
+
+    - add_weld:
+        parent: camera3_origin
+        child: camera3::base
 """
     for i in range(directives_cfg.num_balls):
         env_directives += f"""
@@ -125,8 +143,8 @@ directives:
         name: ball_{i}
         file: file://{get_original_cwd()}/src/assets/sphere/sphere.sdf
         default_free_body_pose:
-            sphere:
-                translation: [{0.5 + np.random.choice([-1,1])*0.01 + 0.1*(random.random()-0.5)}, {np.random.choice([-1,1])*0.01 + 0.1*(random.random()-0.5)}, 0.5]
+            sphere_body_link:
+                translation: [{0.5 + np.random.choice([-1,1])*0.01 + 0.1*(random.random()-0.5)}, {np.random.choice([-1,1])*0.01 + 0.1*(random.random()-0.5)}, 0.8]
 """
     return robot_directives, env_directives
 

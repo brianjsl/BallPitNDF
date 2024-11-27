@@ -19,6 +19,8 @@ from manipulation.station import (
 )
 from debug import visualize_camera_images, visualize_depth_images, visualize_point_cloud, draw_grasp_candidate, draw_query_pts
 import hydra
+import plotly.express as px
+from hydra.utils import get_original_cwd
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -44,11 +46,12 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         "merge_point_clouds",
         MergePointClouds(
             plant,
-            plant.GetModelInstanceByName("bowl"),
+            plant.GetModelInstanceByName("basket"),
             camera_body_indices=[
                 plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[0],
                 plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[0],
                 plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
             ],
             meshcat=meshcat,
         ),
@@ -63,7 +66,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         grasper.GetInputPort("merged_point_cloud"),
     )
 
-    for i in range(3):
+    for i in range(4):
         point_cloud_port = f"camera{i}_point_cloud"
         builder.Connect(
             panda_station.GetOutputPort(point_cloud_port),
@@ -75,7 +78,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         merge_point_clouds.GetInputPort("body_poses"),
     )
 
-    # Debug: visualize camera images
+    #Debug: visualize camera images
     # visualize_camera_images(station)
 
     # Debug: visualize depth images
@@ -94,12 +97,13 @@ def pouring_demo(cfg: DictConfig) -> bool:
 
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
 
-    # debug
-
-    # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
-    # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
-    # pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
-    # np.save('outputs/point_cloud.npy', pc.xyzs())
+    # debug: visualize merged point cloud
+    merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
+    context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
+    pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
+    np.save(f'{get_original_cwd()}/outputs/basket_merged_point_cloud.npy', pc.xyzs())
+    fig = px.scatter_3d(x = pc.xyzs()[0,:], y=pc.xyzs()[1,:], z=pc.xyzs()[2,:])
+    fig.show()
 
     simulator = Simulator(diagram)
 
