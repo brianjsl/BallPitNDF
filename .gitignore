@@ -169,4 +169,4 @@ outputs
 weights/
 ckpts/
 pytorch_scatter/
-./src/assets/wooden_basket/textures/*
+src/assets/wooden_basket/textures/*.png
