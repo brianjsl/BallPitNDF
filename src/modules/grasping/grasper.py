@@ -43,7 +43,10 @@ class LNDFGrasper(LeafSystem):
 
         self.DeclareAbstractOutputPort(
             'grasp_pose', lambda: AbstractValue.Make((RigidTransform(), self.local_ndf.query_pts)),
-            self.get_grasp
+            self.get_grasp,
+            {
+                self.nothing_ticket()   # doesn't change after initial computation
+            }
         )
         self.load_demos()
 

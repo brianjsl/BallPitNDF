@@ -6,14 +6,15 @@ from pydrake.all import (
     MultibodyPlant,
     PiecewisePose,
     JacobianWrtVariable,
-    PiecewisePose,
     RotationMatrix,
+    Meshcat
 )
 import numpy as np
+from debug.visualize_utils import draw_grasp_candidate, draw_query_pts
 
 
 class PandaGraspTrajectoryPlanner(LeafSystem):
-    def __init__(self, plant: MultibodyPlant):
+    def __init__(self, plant: MultibodyPlant, meshcat: Meshcat):
         super().__init__()
         self.plant = plant
         self.context = plant.CreateDefaultContext()
@@ -27,10 +28,14 @@ class PandaGraspTrajectoryPlanner(LeafSystem):
             lambda: AbstractValue.Make(PiecewisePose()),
             self.CalcPandaArmTrajectory,
         )
+        self.meshcat = meshcat
 
     def CalcPandaArmTrajectory(self, context, output):
         X_WH_Init = self.plant.EvalBodyPoseInWorld(self.context, self.panda_link8_body)
-        X_WG, _ = self.grasp_input_port.Eval(context)
+        X_WG, final_query_pts = self.grasp_input_port.Eval(context)
+        # draw_grasp_candidate(self.meshcat, X_WG)
+        draw_query_pts(self.meshcat, final_query_pts)
+
 
         X_GPregrasp = RigidTransform(
             R=RotationMatrix(
@@ -62,7 +67,3 @@ class PandaGraspTrajectoryPlanner(LeafSystem):
         trajectory_VG = trajectory.MakeDerivative()
 
         output.set_value(trajectory_VG)
-
-
-class DebugTrajectoryVisualizer(LeafSystem):
-    pass

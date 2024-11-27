@@ -48,7 +48,6 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     #default arm position
     plant_context = plant.CreateDefaultContext()
     panda_arm = plant.GetModelInstanceByName("panda_arm")
-    plant.SetPositions(plant_context, panda_arm, [-1.57, 0.1, 0, -1.2, 0, 1.6, 0])
 
     merge_point_clouds = builder.AddNamedSystem(
         "merge_point_clouds",
@@ -89,7 +88,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     # trajectory planner
     trajectory_planner = builder.AddNamedSystem(
         "trajectory_planner",
-        PandaGraspTrajectoryPlanner(plant)
+        PandaGraspTrajectoryPlanner(plant, meshcat)
     )
 
     builder.Connect(
@@ -163,7 +162,7 @@ def pouring_demo(cfg: DictConfig) -> bool:
 
     grasper = diagram.GetSubsystemByName('grasper')
     context = diagram.CreateDefaultContext()
-    # grasper_context = grasper.GetMyContextFromRoot(context)
+    grasper_context = grasper.GetMyContextFromRoot(context)
     # grasp, final_query_pts = grasper.GetOutputPort('grasp_pose').Eval(grasper_context)
     # draw_grasp_candidate(meshcat, grasp)
     # draw_query_pts(meshcat, final_query_pts)
@@ -186,15 +185,8 @@ def pouring_demo(cfg: DictConfig) -> bool:
     panda_hand_body = plant.GetBodyByName("panda_hand")
 
 
-    # trajectory poses
-    X_WHinit = plant.EvalBodyPoseInWorld(plant_context, panda_hand_body)
-
-    # trajectory output from planner
-    panda_arm_traj = trajectory_planner.GetOutputPort("panda_arm_trajectory").Eval(trajectory_planner_context)
-    # print("panda_arm_traj: ", panda_arm_traj)
-
     plant_mutable_context = plant.GetMyMutableContextFromRoot(context)
-    plant.SetPositions(plant_mutable_context, panda_arm, [-1.57, 0.1, 0, -1.2, 0, 1.6, 0])
+    # plant.SetPositions(plant_mutable_context, panda_arm, [-1.57, 0.1, 0, -1.2, 0, 1.6, 0])
 
     # set initial integrator value
     integrator = diagram.GetSubsystemByName("trajectory_controller").GetSubsystemByName("panda_arm_integrator")
@@ -202,6 +194,8 @@ def pouring_demo(cfg: DictConfig) -> bool:
         integrator.GetMyContextFromRoot(context), 
         plant.GetPositions(plant_context, panda_arm)
     )
+
+    print('Running Simulation')
 
     while meshcat.GetButtonClicks("Stop Simulation") < 1:
         if cfg.max_time != -1 and simulator.get_context().get_time() > cfg.max_time:
