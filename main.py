@@ -6,6 +6,8 @@ from pydrake.all import (
     DiagramBuilder,
     Diagram,
     MeshcatVisualizer,
+    RigidTransform,
+    RotationMatrix
 )
 from omegaconf import DictConfig
 from src.stations.teleop_station import MakePandaManipulationStation, get_directives
@@ -21,6 +23,7 @@ from debug import visualize_camera_images, visualize_depth_images, visualize_poi
 import hydra
 import plotly.express as px
 from hydra.utils import get_original_cwd
+from src.kinematics import PandaGraspTrajectoryPlanner, CreatePandaTrajectoryController
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -41,6 +44,11 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     station = builder.AddSystem(panda_station)
 
     plant = station.GetSubsystemByName("plant")
+
+    #default arm position
+    plant_context = plant.CreateDefaultContext()
+    panda_arm = plant.GetModelInstanceByName("panda_arm")
+    plant.SetPositions(plant_context, panda_arm, [-1.57, 0.1, 0, -1.2, 0, 1.6, 0])
 
     merge_point_clouds = builder.AddNamedSystem(
         "merge_point_clouds",
@@ -78,6 +86,41 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         merge_point_clouds.GetInputPort("body_poses"),
     )
 
+    # trajectory planner
+    trajectory_planner = builder.AddNamedSystem(
+        "trajectory_planner",
+        PandaGraspTrajectoryPlanner(plant)
+    )
+
+    builder.Connect(
+        grasper.GetOutputPort("grasp_pose"),
+        trajectory_planner.GetInputPort("grasp_pose"),
+    )
+
+    # trajectory controller
+    panda_arm = plant.GetModelInstanceByName("panda_arm")
+    plant_context = plant.CreateDefaultContext()
+    initial_panda_arm_position = plant.GetPositions(plant_context, panda_arm)
+    trajectory_controller = builder.AddNamedSystem(
+        "trajectory_controller",
+        CreatePandaTrajectoryController(plant, initial_panda_arm_position=initial_panda_arm_position)
+    )
+
+    builder.Connect(
+        trajectory_planner.GetOutputPort("panda_arm_trajectory"),
+        trajectory_controller.GetInputPort("panda_arm_trajectory"),
+    )
+
+    builder.Connect(
+        station.GetOutputPort("panda_arm.position_estimated"),
+        trajectory_controller.GetInputPort("panda_arm.position"),
+    )
+
+    builder.Connect(
+        trajectory_controller.GetOutputPort("panda_arm.position_commanded"),
+        station.GetInputPort("panda_arm.position"),
+    )
+
     #Debug: visualize camera images
     # visualize_camera_images(station)
 
@@ -98,16 +141,16 @@ def pouring_demo(cfg: DictConfig) -> bool:
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
 
     # debug: visualize merged point cloud
-    merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
-    context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
-    pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
-    np.save(f'{get_original_cwd()}/outputs/basket_merged_point_cloud.npy', pc.xyzs())
-    fig = px.scatter_3d(x = pc.xyzs()[0,:], y=pc.xyzs()[1,:], z=pc.xyzs()[2,:])
-    fig.show()
+    # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
+    # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
+    # pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
+    # np.save(f'{get_original_cwd()}/outputs/basket_merged_point_cloud.npy', pc.xyzs())
+    # fig = px.scatter_3d(x = pc.xyzs()[0,:], y=pc.xyzs()[1,:], z=pc.xyzs()[2,:])
+    # fig.show()
 
     simulator = Simulator(diagram)
 
-    simulator.AdvanceTo(0.4)
+    simulator.AdvanceTo(0.6)
     meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
     visualizer.StartRecording()
 
@@ -119,10 +162,46 @@ def pouring_demo(cfg: DictConfig) -> bool:
 
 
     grasper = diagram.GetSubsystemByName('grasper')
-    context = grasper.GetMyContextFromRoot(diagram.CreateDefaultContext())
-    grasp, final_query_pts = grasper.GetOutputPort('grasp_pose').Eval(context)
-    draw_grasp_candidate(meshcat, grasp)
-    draw_query_pts(meshcat, final_query_pts)
+    context = diagram.CreateDefaultContext()
+    # grasper_context = grasper.GetMyContextFromRoot(context)
+    # grasp, final_query_pts = grasper.GetOutputPort('grasp_pose').Eval(grasper_context)
+    # draw_grasp_candidate(meshcat, grasp)
+    # draw_query_pts(meshcat, final_query_pts)
+
+    # trajectory planner
+    trajectory_planner = diagram.GetSubsystemByName("trajectory_planner")
+    trajectory_planner_context = trajectory_planner.GetMyContextFromRoot(context)
+
+    # draw pose of gripper in initial pose
+    station = diagram.GetSubsystemByName("PandaManipulationStation")
+    plant = station.GetSubsystemByName("plant")
+    plant_context = plant.GetMyContextFromRoot(context)
+
+    # model instances
+    panda_arm = plant.GetModelInstanceByName("panda_arm")
+    panda_hand = plant.GetModelInstanceByName("panda_hand")
+
+    # bodies
+    panda_gripper_body = plant.GetBodyByName("panda_link8")
+    panda_hand_body = plant.GetBodyByName("panda_hand")
+
+
+    # trajectory poses
+    X_WHinit = plant.EvalBodyPoseInWorld(plant_context, panda_hand_body)
+
+    # trajectory output from planner
+    panda_arm_traj = trajectory_planner.GetOutputPort("panda_arm_trajectory").Eval(trajectory_planner_context)
+    # print("panda_arm_traj: ", panda_arm_traj)
+
+    plant_mutable_context = plant.GetMyMutableContextFromRoot(context)
+    plant.SetPositions(plant_mutable_context, panda_arm, [-1.57, 0.1, 0, -1.2, 0, 1.6, 0])
+
+    # set initial integrator value
+    integrator = diagram.GetSubsystemByName("trajectory_controller").GetSubsystemByName("panda_arm_integrator")
+    integrator.set_integral_value(
+        integrator.GetMyContextFromRoot(context), 
+        plant.GetPositions(plant_context, panda_arm)
+    )
 
     while meshcat.GetButtonClicks("Stop Simulation") < 1:
         if cfg.max_time != -1 and simulator.get_context().get_time() > cfg.max_time:

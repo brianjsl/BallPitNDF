@@ -170,3 +170,4 @@ weights/
 ckpts/
 pytorch_scatter/
 src/assets/wooden_basket/textures/*.png
+src/assets/sphere/textures/*

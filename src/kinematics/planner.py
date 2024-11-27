@@ -20,7 +20,7 @@ class PandaGraspTrajectoryPlanner(LeafSystem):
         self.panda_link8_body = plant.GetBodyByName("panda_link8")
 
         self.grasp_input_port = self.DeclareAbstractInputPort(
-            "grasp_pose", AbstractValue.Make(RigidTransform())
+            "grasp_pose", AbstractValue.Make((RigidTransform(), np.ndarray(0)))
         )
         self.panda_arm_trajectory_output_port = self.DeclareAbstractOutputPort(
             "panda_arm_trajectory",
@@ -30,7 +30,7 @@ class PandaGraspTrajectoryPlanner(LeafSystem):
 
     def CalcPandaArmTrajectory(self, context, output):
         X_WH_Init = self.plant.EvalBodyPoseInWorld(self.context, self.panda_link8_body)
-        X_WG = self.grasp_input_port.Eval(context)
+        X_WG, _ = self.grasp_input_port.Eval(context)
 
         X_GPregrasp = RigidTransform(
             R=RotationMatrix(
