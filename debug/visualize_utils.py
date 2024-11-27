@@ -7,11 +7,13 @@ from pydrake.all import (
     Meshcat,
     DiagramBuilder,
     MeshcatVisualizer,
-    MeshcatVisualizerParams
+    MeshcatVisualizerParams,
+    PointCloud,
+    Rgba
 )
 import numpy as np
 import trimesh
-from src.modules.lndf_robot.utils.plotly_save import plot3d
+from src.modules.grasping.lndf_robot.utils.plotly_save import plot3d
 from plotly.offline import plot
 import plotly.graph_objects as go
 from manipulation.scenarios import (
@@ -20,23 +22,24 @@ from manipulation.scenarios import (
     Parser,
     ConfigureParser,
 )
+from manipulation.meshcat_utils import AddMeshcatTriad
 
 def visualize_camera_images(station: System):
     context = station.CreateDefaultContext()
-    plt.figure(figsize=(12, 6))
-    for i in range(3):
+    plt.figure(figsize=(16, 6))
+    for i in range(4):
         color_image = station.GetOutputPort(f'camera{i}_rgb_image').Eval(context)
-        plt.subplot(1, 3, i+1)
+        plt.subplot(1, 4, i+1)
         plt.imshow(color_image.data)
         plt.title(f'RGB Image Camera {i}')
     plt.show()
 
 def visualize_depth_images(station: System):
     context = station.CreateDefaultContext()
-    plt.figure(figsize=(12, 6))
-    for i in range(3):
+    plt.figure(figsize=(16, 6))
+    for i in range(4):
         color_image = station.GetOutputPort(f'camera{i}_depth_image').Eval(context)
-        plt.subplot(1, 3, i+1)
+        plt.subplot(1, 4, i+1)
         plt.imshow(color_image.data)
         plt.title(f'Depth Image Camera {i}')
     plt.show()
@@ -95,11 +98,11 @@ def draw_grasp_candidate(meshcat: Meshcat, X_G, prefix="gripper", draw_frames=Tr
     parser = Parser(plant)
     ConfigureParser(parser)
     gripper = parser.AddModelsFromUrl(
-        "package://manipulation/schunk_wsg_50_welded_fingers.sdf"
+        "package://drake_models/franka_description/urdf/panda_hand.urdf"
     )
-    plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("body"), X_G)
+    plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_hand"), X_G)
     if draw_frames:
-        AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
+        AddMultibodyTriad(plant.GetFrameByName("panda_hand"), scene_graph)
     plant.Finalize()
 
     params = MeshcatVisualizerParams()
@@ -108,3 +111,11 @@ def draw_grasp_candidate(meshcat: Meshcat, X_G, prefix="gripper", draw_frames=Tr
     diagram = builder.Build()
     context = diagram.CreateDefaultContext()
     diagram.ForcedPublish(context)
+
+def draw_query_pts(meshcat: Meshcat, query_pts: np.ndarray) -> None:
+    '''
+    Draws a set of query points in meshcat.
+    '''
+    cloud = PointCloud(query_pts.shape[0])
+    cloud.mutable_xyzs()[:] = query_pts.T
+    meshcat.SetObject('query_pts', cloud, point_size=0.01, rgba=Rgba(1.0, 0, 0))

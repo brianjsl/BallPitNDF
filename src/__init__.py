@@ -1,1 +1,1 @@
-from .setup import MakePandaManipulationStation
+from .stations.teleop_station import MakePandaManipulationStation, get_directives
