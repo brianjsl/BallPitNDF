@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 drake = "^1.33.0"
 ipykernel = "^6.29.5"
+numpy = "<2"
 
 
 [build-system]

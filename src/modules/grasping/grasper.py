@@ -1,5 +1,5 @@
 from src.modules.grasping import pose_selector
-from src.modules.grasping.pose_selector import LocalNDF 
+from src.modules.grasping.pose_selector import LocalNDF
 from omegaconf import DictConfig
 import os
 import os.path as osp
@@ -42,16 +42,15 @@ class LNDFGrasper(LeafSystem):
         )
 
         self.DeclareAbstractOutputPort(
-            'grasp_pose', lambda: AbstractValue.Make((RigidTransform(), self.local_ndf.query_pts)),
+            "grasp_pose",
+            lambda: AbstractValue.Make((RigidTransform(), self.local_ndf.query_pts)),
             self.get_grasp,
-            {
-                self.nothing_ticket()   # doesn't change after initial computation
-            }
+            {self.nothing_ticket()},  # doesn't change after initial computation
         )
-        # self.load_demos()
+        self.load_demos()
 
-    def load_demos(self, demo_exp='lndf_mug_handle_demos', n_demos=10):
-        demo_load_dir = osp.join(get_original_cwd(), 'src', 'demos', demo_exp)
+    def load_demos(self, demo_exp="lndf_mug_handle_demos", n_demos=10):
+        demo_load_dir = osp.join(get_original_cwd(), "src", "demos", demo_exp)
         demo_fnames = os.listdir(demo_load_dir)
 
         assert len(demo_fnames), "No demonstrations found in path: %s!" % demo_load_dir
@@ -124,7 +123,7 @@ class LNDFGrasper(LeafSystem):
         idx = best_idx
         best_pose_mat = pose_mats[idx] * 2
 
-        final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat) 
+        final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat)
 
         # offset to go from end effector pose to gripper
         offset_transform = RigidTransform([0, 0, -0.1])
