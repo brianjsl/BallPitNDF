@@ -30,7 +30,7 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
     pregrasp_pose = grasp_pose @ X_G_grasp_pregrasp
 
     # Initial to prepare: interpolate halfway orientation by halving the angle
-    X_GinitialGpregrasp = initial_pose.inverse() * pregrasp_pose
+    X_GinitialGpregrasp = initial_pose.inverse() @ pregrasp_pose
     angle_axis = X_GinitialGpregrasp.rotation().ToAngleAxis()
     X_GinitialGprepare = RigidTransform(
         AngleAxis(angle = angle_axis.angle() / 2.0, axis=angle_axis.axis()),

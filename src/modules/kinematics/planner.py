@@ -147,6 +147,7 @@ class Planner(LeafSystem):
         mode_value = mode.get_value()
 
         current_time = context.get_time()
+        print(f't: {current_time}')
 
         hand_state = self.get_input_port(self._hand_state_index).Eval(context)
         body_poses = self.get_input_port(self._body_poses_index).Eval(context)
@@ -306,7 +307,11 @@ class Planner(LeafSystem):
             else:
                 output.set_value(self.get_input_port(int(self._body_poses_index)).Eval(context)[int(self._gripper_body_index)])
         elif mode_value == PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
-            output.set_value()
+            # TODO: 
+            body_poses = self.get_input_port(self._body_poses_index).Eval(context)
+            # pose of the gripper body
+            X_G = body_poses[int(self._gripper_body_index)]
+            output.set_value(X_G)
         else: 
             raise RuntimeError(f"Unknown State; {mode_value}")
 
