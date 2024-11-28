@@ -392,3 +392,13 @@ def MakePandaManipulationStation(
 
     return diagram
 
+def CreateArmOnlyPlant(time_step: float) -> MultibodyPlant:
+    arm_only_plant = MultibodyPlant(time_step=time_step)
+    parser = Parser(arm_only_plant)
+    parser.AddModelsFromUrl("package://drake_models/franka_description/urdf/panda_arm.urdf")
+    arm_only_plant.WeldFrames(
+        arm_only_plant.world_frame(),
+        arm_only_plant.GetFrameByName("panda_link0")
+    )
+    arm_only_plant.Finalize()
+    return arm_only_plant

@@ -11,7 +11,7 @@ from pydrake.all import (
     PortSwitch
 )
 from omegaconf import DictConfig
-from src.stations.teleop_station import MakePandaManipulationStation, get_directives
+from src.stations.teleop_station import MakePandaManipulationStation, get_directives, CreateArmOnlyPlant
 from src.modules.perception import MergePointClouds, LNDFGrasper
 import logging
 import os
@@ -101,7 +101,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         planner.GetInputPort("hand_state")
     )
     builder.Connect(
-        station.GetOutputPort("panda_arm_position_commanded"),
+        station.GetOutputPort("panda_arm_position_measured"),
         planner.GetInputPort("panda_position")
     )
 
@@ -113,10 +113,13 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     robot = station.GetSubsystemByName("panda_controller").get_multibody_plant_for_control()
 
     # DiffIK
-    diff_ik = AddPandaDifferentialIK(builder, robot)
+    time_step = plant.time_step()
+    arm_only_plant = CreateArmOnlyPlant(time_step)
+
+    diff_ik = AddPandaDifferentialIK(builder, arm_only_plant)
     builder.Connect(
         planner.GetOutputPort("X_WG"),
-        diff_ik.GetInputPort(0)
+        diff_ik.GetInputPort("X_AE_desired")
     )
     builder.Connect(
         station.GetOutputPort("panda_arm_state_estimated"),

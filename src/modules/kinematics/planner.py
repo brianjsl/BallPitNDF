@@ -96,6 +96,7 @@ class Planner(LeafSystem):
             self.CalcDiffIKReset,
         )
 
+
         # When going home
         self.DeclareVectorOutputPort(
             "panda_position_command", ARM_POSITIONS, self.CalcPandaPosition
@@ -106,10 +107,7 @@ class Planner(LeafSystem):
             "panda_position", ARM_POSITIONS).get_index()
 
         # State of the joints 
-        self._q0_index = self.DeclareDiscreteState(NUM_POSITIONS)  
-        self._traj_q_index = self.DeclareAbstractState(
-            AbstractValue.Make(PiecewisePolynomial())
-        )
+        self._q0_index = self.DeclareDiscreteState(ARM_POSITIONS)  
 
         # State of the planner
         self._mode_index = self.DeclareAbstractState(
@@ -184,24 +182,26 @@ class Planner(LeafSystem):
                 q_traj = context.get_abstract_state(int(self._traj_q_index)).get_value()
                 if not q_traj.is_time_in_range(current_time):
                     if not self._is_done:
-                        mode.set_value(PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE)
                         context.get_abstract_state(int(self._times_index)).set_value({"initial": current_time})
+                        mode.set_value(PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE)
                     else:
                         print("Pouring Done.")
                         return
     
     def GoHome(self, context, mode, current_time):
+        print('GOING HOME')
 
         # initiali Panda position
         q = self.get_input_port(self._panda_position_index).Eval(context)
         home = copy(context.get_discrete_state(int(self._q0_index)).get_value())
         home[0] = q[0] # Don't reset the first joint (breaks)
-        mode.set_value(PlannerState.GO_HOME)
         context.get_abstract_state(int(self._traj_q_index)).set_value(
             PiecewisePolynomial.FirstOrderHold([current_time, current_time + 5], np.column_stack((q, home)))
         )
+        mode.set_value(PlannerState.GO_HOME)
     
     def PlanGrasp(self, context, mode):
+        print('PLANNING GRASP')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
         grasp_pose, final_query_points = self.get_input_port(self._basket_grasp_index).Eval(context)
         draw_query_pts(self._meshcat, final_query_points)
@@ -229,6 +229,7 @@ class Planner(LeafSystem):
         mode.set_value(PlannerState.MOVE_TO_BALLPIT)
     
     def PlanPour(self, context, mode):
+        print('PLANNING POUR')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
 
         # have final pos be above the bin
@@ -247,6 +248,7 @@ class Planner(LeafSystem):
         mode.set_value(PlannerState.MOVE_TO_BALLPIT)
     
     def Pour(self, context, mode):
+        print('POURING')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
         final_pose = initial_pose @ RigidTransform(RollPitchYaw(0.75*np.pi, 0, 0))
 
@@ -263,6 +265,7 @@ class Planner(LeafSystem):
         mode.set_value(PlannerState.POUR_TO_BALLPIT)
     
     def ReturnBasket(self, context, mode):
+        print('RETURNING BASKET')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
         grasp_pose, final_query_points = self.get_input_port(self._basket_grasp_index).Eval(context)
 
@@ -347,9 +350,29 @@ class Planner(LeafSystem):
             output.set_value(False) 
     
     def Initialize(self, context, discrete_state):
-        discrete_state.set_value(
-            int(self._q0_index),
-            self.get_input_port(int(self._panda_position_index)).Eval(context))
+        # discrete_state.set_value(
+        #     int(self._q0_index),
+        #     self.get_input_port(int(self._panda_position_index)).Eval(context))
+
+        # Get the current joint positions
+        q = self.get_input_port(int(self._panda_position_index)).Eval(context)
+        discrete_state.set_value(int(self._q0_index), q)
+
+         # Initialize q_traj with a trajectory from current position to home position
+        home = copy(q)
+        home[0] = q[0]  # Adjust as necessary
+
+        # Create the trajectory
+        q_traj = PiecewisePolynomial.FirstOrderHold(
+            [context.get_time(), context.get_time() + 5],
+            np.column_stack((q, home))
+        )
+
+        # Set q_traj in the abstract state
+        context.get_mutable_abstract_state(int(self._traj_q_index)).set_value(q_traj)
+
+        # Set the initial mode to GO_HOME
+        context.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.GO_HOME)
 
     def CalcPandaPosition(self, context, output):
         mode = context.get_abstract_state(int(self._mode_index)).get_value()

@@ -21,10 +21,10 @@ def AddPandaDifferentialIK(builder: DiagramBuilder, plant: MultibodyPlant, frame
 
     # Decrease velocity to prevent oscilations in controller.
     # Panda has 7 (arm) joints (exclude the hand)
-    panda_velocity_limits = np.array([1.4, 1.4, 1.7, 1.3, 2.2, 2.3, 2.3, 2.0, 2.0])
+    panda_velocity_limits = np.array([1.4, 1.4, 1.7, 1.3, 2.2, 2.3, 2.3])
     params.set_joint_velocity_limits(
         (-panda_velocity_limits, panda_velocity_limits))
-    params.set_joint_centering_gain(10 * np.eye(9))
+    params.set_joint_centering_gain(10 * np.eye(7))
     if frame is None:
         frame = plant.GetFrameByName("panda_link8")
     differential_ik = builder.AddSystem(
