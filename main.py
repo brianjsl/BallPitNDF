@@ -11,14 +11,14 @@ from pydrake.all import (
     PortSwitch
 )
 from omegaconf import DictConfig
-from src.stations.setup_station import get_scenario
+from src.stations.teleop_station import MakePandaManipulationStation, get_directives
 from src.modules.perception import MergePointClouds, LNDFGrasper
 import logging
 import os
 import random
 import numpy as np
 from manipulation.station import (
-    DepthImageToPointCloud, MakeHardwareStation, LoadScenario, AddPointClouds, AppendDirectives
+    DepthImageToPointCloud
 )
 from debug import visualize_camera_images, visualize_depth_images, visualize_point_cloud, draw_grasp_candidate, draw_query_pts
 import hydra
@@ -31,14 +31,17 @@ class NoDiffIKWarnings(logging.Filter):
         return not record.getMessage().startswith("Differential IK")
 
 def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Diagram, ]:
-    scenario_cfg = cfg['directives']
+    directives_config = cfg['directives']
     lndf_config = cfg['lndf']
 
     builder = DiagramBuilder()
 
-    scenario_data = get_scenario(scenario_cfg)
-    scenario = LoadScenario(data=scenario_data)
-    panda_station = MakeHardwareStation(scenario, meshcat)
+    robot_directives, env_directives = get_directives(directives_config)
+    panda_station = MakePandaManipulationStation(
+        robot_directives=robot_directives,
+        env_directives=env_directives,
+        meshcat=meshcat,
+    )
     station = builder.AddSystem(panda_station)
 
     plant = station.GetSubsystemByName("plant")
@@ -60,10 +63,6 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         ),
     )
 
-    to_point_cloud = AddPointClouds(
-        scenario=scenario, station=station, builder=builder, meshcat=meshcat
-    )
-
     grasper = builder.AddNamedSystem(
         "grasper", LNDFGrasper(lndf_config, plant, meshcat)
     )
@@ -74,10 +73,9 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     )
 
     for i in range(3):
-        camera_idx = f"camera{i}"
         point_cloud_port = f"camera{i}_point_cloud"
         builder.Connect(
-            to_point_cloud[camera_idx].get_output_port(),
+            panda_station.GetOutputPort(point_cloud_port),
             merge_point_clouds.GetInputPort(point_cloud_port),
         )
 
@@ -97,12 +95,13 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         planner.GetInputPort("basket_grasp")
     )
 
+    #TODO: Fix Port names
     builder.Connect(
-        station.GetOutputPort("panda_hand_state"),
+        station.GetOutputPort("panda_hand_state_estimated"),
         planner.GetInputPort("hand_state")
     )
     builder.Connect(
-        station.GetOutputPort("panda_arm_state"),
+        station.GetOutputPort("panda_arm_position_commanded"),
         planner.GetInputPort("panda_position")
     )
 
@@ -117,17 +116,16 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     diff_ik = AddPandaDifferentialIK(builder, robot)
     builder.Connect(
         planner.GetOutputPort("X_WG"),
-        diff_ik.GetInputPort("X_AE_desired")
+        diff_ik.GetInputPort(0)
     )
     builder.Connect(
-        station.GetOutputPort("panda_arm_state"),
+        station.GetOutputPort("panda_arm_state_estimated"),
         diff_ik.GetInputPort("robot_state")
     )
-
     builder.Connect(planner.GetOutputPort("reset_diff_ik"),
                     diff_ik.GetInputPort("use_robot_state"))
     builder.Connect(planner.GetOutputPort("hand_position"),
-                    station.GetInputPort("panda_hand_state"))
+                    station.GetInputPort("panda_hand_position"))
     
     # switch between direct control and diff ik
     switch = builder.AddSystem(PortSwitch(7))
@@ -162,12 +160,12 @@ def pouring_demo(cfg: DictConfig) -> bool:
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
 
     # debug: visualize merged point cloud
-    merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
-    context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
-    pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
+    # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
+    # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
+    # pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
     # np.save(f'{get_original_cwd()}/outputs/basket_merged_point_cloud.npy', pc.xyzs())
-    fig = px.scatter_3d(x = pc.xyzs()[0,:], y=pc.xyzs()[1,:], z=pc.xyzs()[2,:])
-    fig.show()
+    # fig = px.scatter_3d(x = pc.xyzs()[0,:], y=pc.xyzs()[1,:], z=pc.xyzs()[2,:])
+    # fig.show()
 
     simulator = Simulator(diagram)
 
