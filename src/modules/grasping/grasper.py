@@ -47,7 +47,9 @@ class LNDFGrasper(LeafSystem):
             self.get_grasp,
             {self.nothing_ticket()},  # doesn't change after initial computation
         )
-        self.load_demos()
+
+        if debug_pose is None:
+            self.load_demos()
 
     def load_demos(self, demo_exp="lndf_mug_handle_demos", n_demos=10):
         demo_load_dir = osp.join(get_original_cwd(), "src", "demos", demo_exp)
@@ -106,7 +108,7 @@ class LNDFGrasper(LeafSystem):
 
     def get_grasp(self, context, output):
         if self.debug_pose:
-            output.set_value(self.debug_pose)
+            output.set_value((self.debug_pose, None))
             return
 
         point_cloud = self.get_input_port(

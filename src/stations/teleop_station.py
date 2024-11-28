@@ -16,7 +16,7 @@ from pydrake.all import (
     CameraInfo,
     ClippingRange,
     RigidTransform,
-    Diagram
+    Diagram,
 )
 import os
 from manipulation.utils import ConfigureParser
@@ -28,6 +28,7 @@ import pydot
 from omegaconf import DictConfig
 import random
 from hydra.utils import get_original_cwd
+
 
 def get_directives(directives_cfg: DictConfig) -> tuple[str, str]:
     # description of robot
@@ -148,6 +149,7 @@ directives:
 """
     return robot_directives, env_directives
 
+
 def MakePandaManipulationStation(
     robot_directives: str,
     env_directives: str,
@@ -187,13 +189,15 @@ def MakePandaManipulationStation(
 
     MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
 
-    #Add Cameras
-    AddRgbdSensors(builder,
-                   plant,
-                   scene_graph,
-                   also_add_point_clouds=True,
-                   model_instance_prefix=camera_prefix, 
-                   depth_camera=None)
+    # Add Cameras
+    AddRgbdSensors(
+        builder,
+        plant,
+        scene_graph,
+        also_add_point_clouds=True,
+        model_instance_prefix=camera_prefix,
+        depth_camera=None,
+    )
 
     # create controllers for the panda arm and hand
     panda_arm = plant.GetModelInstanceByName(panda_arm_name)
@@ -342,19 +346,15 @@ def MakePandaManipulationStation(
     builder.Connect(panda_hand_position.get_output_port(), multiplex.get_input_port(1))
 
     builder.Connect(
-        # panda_arm_position.get_output_port(),
         multiplex.get_output_port(),
         desired_state_from_position.get_input_port(),
     )
 
-
-    #cheat ports
+    # cheat ports
     builder.ExportOutput(plant.get_body_poses_output_port(), "body_poses")
     builder.ExportOutput(scene_graph.get_query_output_port(), "query_object")
-
 
     diagram = builder.Build()
     diagram.set_name("PandaManipulationStation")
 
     return diagram
-

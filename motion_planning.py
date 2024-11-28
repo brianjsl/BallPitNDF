@@ -29,11 +29,28 @@ import plotly.express as px
 from hydra.utils import get_original_cwd
 from src.kinematics import PandaGraspTrajectoryPlanner, CreatePandaTrajectoryController
 from manipulation.utils import RenderDiagram
+from manipulation.meshcat_utils import AddMeshcatTriad
+from src.modules.motion_planning.trajectory import (
+    TrajectoryPlanner,
+    PandaTrajectoryEvaluator,
+)
 
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
         return not record.getMessage().startswith("Differential IK")
+
+
+DEBUG_GRASP_POSE = RigidTransform(
+    R=RotationMatrix(
+        [
+            [-0.24274149537086487, 1.7477315664291382, 0.9415445923805237],
+            [0.891293466091156, 0.943527340888977, -1.521623969078064],
+            [-1.773882508277893, 0.2349160611629486, -0.8933901190757751],
+        ]
+    ),
+    p=[0.4168945953249931, 0.21598514015786352, 0.5206834465265274],
+)
 
 
 def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
@@ -75,7 +92,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
     )
 
     grasper = builder.AddNamedSystem(
-        "grasper", LNDFGrasper(lndf_config, plant, meshcat)
+        "grasper", LNDFGrasper(lndf_config, plant, meshcat, debug_pose=DEBUG_GRASP_POSE)
     )
 
     builder.Connect(
@@ -96,8 +113,12 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
     )
 
     # trajectory planner
+    controller_plant = station.GetSubsystemByName(
+        "panda_controller"
+    ).get_multibody_plant_for_control()
     trajectory_planner = builder.AddNamedSystem(
-        "trajectory_planner", PandaGraspTrajectoryPlanner(plant, meshcat)
+        "trajectory_planner",
+        TrajectoryPlanner(controller_plant, meshcat),
     )
 
     builder.Connect(
@@ -105,30 +126,22 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
         trajectory_planner.GetInputPort("grasp_pose"),
     )
 
-    # trajectory controller
-    panda_arm = plant.GetModelInstanceByName("panda_arm")
-    plant_context = plant.CreateDefaultContext()
-    initial_panda_arm_position = plant.GetPositions(plant_context, panda_arm)
-    trajectory_controller = builder.AddNamedSystem(
-        "trajectory_controller",
-        CreatePandaTrajectoryController(
-            plant, initial_panda_arm_position=initial_panda_arm_position
-        ),
+    trajectory_evaluator = builder.AddNamedSystem(
+        "trajectory_evaluator", PandaTrajectoryEvaluator()
     )
-
     builder.Connect(
         trajectory_planner.GetOutputPort("panda_arm_trajectory"),
-        trajectory_controller.GetInputPort("panda_arm_trajectory"),
+        trajectory_evaluator.GetInputPort("trajectory"),
     )
 
     builder.Connect(
-        station.GetOutputPort("panda_arm.position_estimated"),
-        trajectory_controller.GetInputPort("panda_arm.position"),
-    )
-
-    builder.Connect(
-        trajectory_controller.GetOutputPort("panda_arm.position_commanded"),
+        trajectory_evaluator.GetOutputPort("panda_arm_q"),
         station.GetInputPort("panda_arm.position"),
+    )
+
+    builder.Connect(
+        trajectory_evaluator.GetOutputPort("panda_hand_q"),
+        station.GetInputPort("panda_hand.position"),
     )
 
     # Debug: visualize camera images
@@ -149,8 +162,25 @@ def pouring_demo(cfg: DictConfig) -> bool:
     meshcat = StartMeshcat()
 
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
+    context = diagram.CreateDefaultContext()
 
-    RenderDiagram(diagram)
+    # print grasp pose
+    grasper = diagram.GetSubsystemByName("grasper")
+    grasper_context = grasper.GetMyContextFromRoot(context)
+    grasp_pose = grasper.GetOutputPort("grasp_pose").Eval(grasper_context)
+
+    AddMeshcatTriad(meshcat, path="/X_WG", X_PT=grasp_pose[0])
+
+    # print trajectory
+    trajectory_planner = diagram.GetSubsystemByName("trajectory_planner")
+    trajectory_planner_context = trajectory_planner.GetMyContextFromRoot(context)
+    panda_arm_traj = trajectory_planner.GetOutputPort("panda_arm_trajectory").Eval(
+        trajectory_planner_context
+    )
+
+    # print("panda_arm_traj: ", panda_arm_traj)
+
+    # RenderDiagram(diagram)
 
     # debug: visualize merged point cloud
     # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
@@ -160,63 +190,18 @@ def pouring_demo(cfg: DictConfig) -> bool:
     # fig = px.scatter_3d(x = pc.xyzs()[0,:], y=pc.xyzs()[1,:], z=pc.xyzs()[2,:])
     # fig.show()
 
-    simulator = Simulator(diagram)
+    simulator = Simulator(diagram, context)
+    simulator.set_target_realtime_rate(1)
 
-    simulator.AdvanceTo(0.6)
-    meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
-    visualizer.StartRecording()
+    meshcat.StartRecording()
+    simulator.AdvanceTo(2.0)
+    meshcat.PublishRecording()
 
-    # run as fast as possible
-    simulator.set_target_realtime_rate(0)
-    meshcat.AddButton("Stop Simulation", "Escape")
-    print("Press Escape to stop the simulation")
+    import time
 
-    grasper = diagram.GetSubsystemByName("grasper")
-    context = diagram.CreateDefaultContext()
-    grasper_context = grasper.GetMyContextFromRoot(context)
-    # grasp, final_query_pts = grasper.GetOutputPort('grasp_pose').Eval(grasper_context)
-    # draw_grasp_candidate(meshcat, grasp)
-    # draw_query_pts(meshcat, final_query_pts)
+    while True:
+        time.sleep(1)
 
-    # trajectory planner
-    trajectory_planner = diagram.GetSubsystemByName("trajectory_planner")
-    trajectory_planner_context = trajectory_planner.GetMyContextFromRoot(context)
-
-    # draw pose of gripper in initial pose
-    station = diagram.GetSubsystemByName("PandaManipulationStation")
-    plant = station.GetSubsystemByName("plant")
-    plant_context = plant.GetMyContextFromRoot(context)
-
-    # model instances
-    panda_arm = plant.GetModelInstanceByName("panda_arm")
-    panda_hand = plant.GetModelInstanceByName("panda_hand")
-
-    # bodies
-    panda_gripper_body = plant.GetBodyByName("panda_link8")
-    panda_hand_body = plant.GetBodyByName("panda_hand")
-
-    plant_mutable_context = plant.GetMyMutableContextFromRoot(context)
-    # plant.SetPositions(plant_mutable_context, panda_arm, [-1.57, 0.1, 0, -1.2, 0, 1.6, 0])
-
-    # set initial integrator value
-    integrator = diagram.GetSubsystemByName("trajectory_controller").GetSubsystemByName(
-        "panda_arm_integrator"
-    )
-    integrator.set_integral_value(
-        integrator.GetMyContextFromRoot(context),
-        plant.GetPositions(plant_context, panda_arm),
-    )
-
-    print("Running Simulation")
-
-    while meshcat.GetButtonClicks("Stop Simulation") < 1:
-        if cfg.max_time != -1 and simulator.get_context().get_time() > cfg.max_time:
-            raise Exception("Took too long")
-        simulator.AdvanceTo(simulator.get_context().get_time() + 2.0)
-        # stats = diagram.get_output_port().Eval(simulator.get_context())
-        visualizer.StopRecording()
-    visualizer.PublishRecording()
-    meshcat.DeleteButton("Stop Simulation")
     return True
 
 

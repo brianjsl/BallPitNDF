@@ -64,21 +64,38 @@ def CreatePandaTrajectoryController(plant: MultibodyPlant, initial_panda_arm_pos
     return diagram
 
 
-class TrajectoryEvaluator(LeafSystem):
+class PandaTrajectoryEvaluator(LeafSystem):
     def __init__(self):
         super().__init__()
         self.trajectory_input = self.DeclareAbstractInputPort(
             "trajectory", AbstractValue.Make(PiecewisePose())
         )
-        self.output = self.DeclareVectorOutputPort("output", 6, self.CalcOutput)
 
-    def CalcOutput(self, context, output):
+        self.panda_arm_q = self.DeclareVectorOutputPort(
+            "panda_arm_q", 7, self.CalcPandaArmQ
+        )
+        self.panda_hand_q = self.DeclareVectorOutputPort(
+            "panda_hand_q", 2, self.CalcPandaHandQ
+        )
+
+    def CalcPandaArmQ(self, context, output):
         t = context.get_time()
         trajectory = self.trajectory_input.Eval(context)
 
         if t < trajectory.end_time():
-            spatial_velocity = trajectory.value(t)
+            q = trajectory.value(t)[:7]
         else:
-            spatial_velocity = np.zeros(6)
-        
-        output.set_value(spatial_velocity)
+            q = np.zeros(7)
+
+        output.set_value(q)
+
+    def CalcPandaHandQ(self, context, output):
+        t = context.get_time()
+        trajectory = self.trajectory_input.Eval(context)
+
+        if t < trajectory.end_time():
+            q = trajectory.value(t)[-2:]
+        else:
+            q = np.zeros(2)
+
+        output.set_value(q)
