@@ -127,21 +127,30 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
     #     trajectory_planner.GetInputPort("grasp_pose"),
     # )
 
-    trajectory_evaluator = builder.AddNamedSystem(
-        "trajectory_evaluator", PandaTrajectoryEvaluator()
+    panda_arm_trajectory_evaluator = builder.AddNamedSystem(
+        "panda_arm_trajectory_evaluator", PandaTrajectoryEvaluator(7)
     )
-    builder.Connect(
-        trajectory_planner.GetOutputPort("panda_arm_trajectory"),
-        trajectory_evaluator.GetInputPort("trajectory"),
+    panda_hand_trajectory_evaluator = builder.AddNamedSystem(
+        "panda_hand_trajectory_evaluator", PandaTrajectoryEvaluator(2)
     )
 
     builder.Connect(
-        trajectory_evaluator.GetOutputPort("panda_arm_q"),
+        trajectory_planner.GetOutputPort("panda_arm_trajectory"),
+        panda_arm_trajectory_evaluator.GetInputPort("trajectory"),
+    )
+
+    builder.Connect(
+        trajectory_planner.GetOutputPort("panda_hand_trajectory"),
+        panda_hand_trajectory_evaluator.GetInputPort("trajectory"),
+    )
+
+    builder.Connect(
+        panda_arm_trajectory_evaluator.GetOutputPort("q"),
         station.GetInputPort("panda_arm.position"),
     )
 
     builder.Connect(
-        trajectory_evaluator.GetOutputPort("panda_hand_q"),
+        panda_hand_trajectory_evaluator.GetOutputPort("q"),
         station.GetInputPort("panda_hand.position"),
     )
 
@@ -192,7 +201,7 @@ def pouring_demo(cfg: DictConfig) -> bool:
     simulator.set_target_realtime_rate(1)
 
     meshcat.StartRecording()
-    simulator.AdvanceTo(1.0)
+    simulator.AdvanceTo(7.0)
     meshcat.PublishRecording()
 
     import time
