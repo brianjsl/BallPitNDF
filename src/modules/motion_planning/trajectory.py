@@ -196,13 +196,13 @@ def CreatePregraspTrajectory(
     meshcat: Meshcat,
 ):
     X_WPreGrasp = X_WGoal
-    X_WGrasp = X_WGoal.multiply(RigidTransform(p=[0, 0, 0.05]))
+    X_WGrasp = X_WGoal.multiply(RigidTransform(p=[0, 0, 0.0475]))
     X_WPick = RigidTransform(
         R=X_WGrasp.rotation(),
         p=X_WGrasp.translation() + np.array([0, 0, 0.2]),
     )
     X_WPour = RigidTransform(
-        R=(X_WPick.rotation()).multiply(RotationMatrix.MakeZRotation(np.pi / 2)),
+        R=(X_WPick.rotation()).multiply(RotationMatrix.MakeYRotation(np.pi / 2)),
         p=X_WPick.translation(),
     )
     traj = PiecewisePose.MakeLinear(

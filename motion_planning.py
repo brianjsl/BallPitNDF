@@ -67,7 +67,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
         robot_directives=robot_directives,
         env_directives=env_directives,
         meshcat=meshcat,
-        time_step=5e-4,
+        time_step=1e-5,
     )
     station = builder.AddSystem(panda_station)
 
