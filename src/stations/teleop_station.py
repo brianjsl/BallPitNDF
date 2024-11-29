@@ -184,7 +184,6 @@ def MakePandaManipulationStation(
     ConfigureParser(parser)
     parser.AddModelsFromString(robot_directives, ".dmd.yaml")
     parser.AddModelsFromString(env_directives, ".dmd.yaml")
-
     plant.Finalize()
 
     MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)

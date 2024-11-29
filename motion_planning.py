@@ -67,6 +67,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
         robot_directives=robot_directives,
         env_directives=env_directives,
         meshcat=meshcat,
+        time_step=5e-4,
     )
     station = builder.AddSystem(panda_station)
 
@@ -76,41 +77,41 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
     plant_context = plant.CreateDefaultContext()
     panda_arm = plant.GetModelInstanceByName("panda_arm")
 
-    merge_point_clouds = builder.AddNamedSystem(
-        "merge_point_clouds",
-        MergePointClouds(
-            plant,
-            plant.GetModelInstanceByName("basket"),
-            camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
-            ],
-            meshcat=meshcat,
-        ),
-    )
+    # merge_point_clouds = builder.AddNamedSystem(
+    #     "merge_point_clouds",
+    #     MergePointClouds(
+    #         plant,
+    #         plant.GetModelInstanceByName("basket"),
+    #         camera_body_indices=[
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
+    #         ],
+    #         meshcat=meshcat,
+    #     ),
+    # )
 
-    grasper = builder.AddNamedSystem(
-        "grasper", LNDFGrasper(lndf_config, plant, meshcat, debug_pose=DEBUG_GRASP_POSE)
-    )
+    # grasper = builder.AddNamedSystem(
+    #     "grasper", LNDFGrasper(lndf_config, plant, meshcat, debug_pose=DEBUG_GRASP_POSE)
+    # )
 
-    builder.Connect(
-        merge_point_clouds.GetOutputPort("point_cloud"),
-        grasper.GetInputPort("merged_point_cloud"),
-    )
+    # builder.Connect(
+    #     merge_point_clouds.GetOutputPort("point_cloud"),
+    #     grasper.GetInputPort("merged_point_cloud"),
+    # )
 
-    for i in range(4):
-        point_cloud_port = f"camera{i}_point_cloud"
-        builder.Connect(
-            panda_station.GetOutputPort(point_cloud_port),
-            merge_point_clouds.GetInputPort(point_cloud_port),
-        )
+    # for i in range(4):
+    #     point_cloud_port = f"camera{i}_point_cloud"
+    #     builder.Connect(
+    #         panda_station.GetOutputPort(point_cloud_port),
+    #         merge_point_clouds.GetInputPort(point_cloud_port),
+    #     )
 
-    builder.Connect(
-        panda_station.GetOutputPort("body_poses"),
-        merge_point_clouds.GetInputPort("body_poses"),
-    )
+    # builder.Connect(
+    #     panda_station.GetOutputPort("body_poses"),
+    #     merge_point_clouds.GetInputPort("body_poses"),
+    # )
 
     # trajectory planner
     controller_plant = station.GetSubsystemByName(
@@ -121,10 +122,10 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[
         TrajectoryPlanner(controller_plant, meshcat),
     )
 
-    builder.Connect(
-        grasper.GetOutputPort("grasp_pose"),
-        trajectory_planner.GetInputPort("grasp_pose"),
-    )
+    # builder.Connect(
+    #     grasper.GetOutputPort("grasp_pose"),
+    #     trajectory_planner.GetInputPort("grasp_pose"),
+    # )
 
     trajectory_evaluator = builder.AddNamedSystem(
         "trajectory_evaluator", PandaTrajectoryEvaluator()
@@ -164,19 +165,16 @@ def pouring_demo(cfg: DictConfig) -> bool:
     diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
     context = diagram.CreateDefaultContext()
 
-    # print grasp pose
-    grasper = diagram.GetSubsystemByName("grasper")
-    grasper_context = grasper.GetMyContextFromRoot(context)
-    grasp_pose = grasper.GetOutputPort("grasp_pose").Eval(grasper_context)
-
-    AddMeshcatTriad(meshcat, path="/X_WG", X_PT=grasp_pose[0])
-
     # print trajectory
     trajectory_planner = diagram.GetSubsystemByName("trajectory_planner")
     trajectory_planner_context = trajectory_planner.GetMyContextFromRoot(context)
-    panda_arm_traj = trajectory_planner.GetOutputPort("panda_arm_trajectory").Eval(
-        trajectory_planner_context
+    trajectory_planner.GetInputPort("grasp_pose").FixValue(
+        trajectory_planner_context, (DEBUG_GRASP_POSE, None)
     )
+
+    # panda_arm_traj = trajectory_planner.GetOutputPort("panda_arm_trajectory").Eval(
+    #     trajectory_planner_context
+    # )
 
     # print("panda_arm_traj: ", panda_arm_traj)
 
@@ -194,7 +192,7 @@ def pouring_demo(cfg: DictConfig) -> bool:
     simulator.set_target_realtime_rate(1)
 
     meshcat.StartRecording()
-    simulator.AdvanceTo(2.0)
+    simulator.AdvanceTo(1.0)
     meshcat.PublishRecording()
 
     import time
