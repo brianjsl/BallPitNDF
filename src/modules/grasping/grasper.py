@@ -44,8 +44,8 @@ class LNDFGrasper(LeafSystem):
         self.DeclareAbstractOutputPort(
             'grasp_pose', lambda: AbstractValue.Make((RigidTransform(), self.local_ndf.query_pts)),
             self.get_grasp,
-            {
-                self.nothing_ticket()   # doesn't change after initial computation
+            prerequisites_of_calc={
+                self.input_port_ticket(self.GetInputPort("merged_point_cloud").get_index())
             }
         )
         self.load_demos()
@@ -127,7 +127,7 @@ class LNDFGrasper(LeafSystem):
         final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat) 
 
         # offset to go from end effector pose to gripper
-        offset_transform = RigidTransform([0, 0, -0.1])
+        offset_transform = RigidTransform([0, 0, -0.05])
         X_WB = RigidTransform(best_pose_mat) @ offset_transform
 
         output.set_value((X_WB, final_query_pts))

@@ -19,6 +19,7 @@ from pydrake.all import (
     UniformlyRandomRotationMatrix,
     MultibodyPlant,
     Meshcat,
+    RotationMatrix
 )
 from enum import Enum
 import numpy as np
@@ -160,11 +161,10 @@ class Planner(LeafSystem):
                 self.GoHome(context, state, current_time)
             case PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
                 start_time = context.get_abstract_state(int(self._times_index)).get_value()["initial"]
-                if current_time > start_time + 3.0:
+                if current_time > start_time + 0.5:
                     self.PlanGrasp(context, state)
             case PlannerState.MOVE_TO_BASKET:
                 X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
-                print(X_G_traj.get_number_of_segments())
                 if not X_G_traj.is_time_in_range(current_time):
                     self.PlanPour(context, state)
             case PlannerState.MOVE_TO_BALLPIT:
@@ -198,7 +198,7 @@ class Planner(LeafSystem):
         home = copy(context.get_discrete_state(int(self._q0_index)).get_value())
         home[0] = q[0] # Don't reset the first joint (breaks)
         state.get_mutable_abstract_state(int(self._traj_q_index)).set_value(
-            PiecewisePolynomial.FirstOrderHold([current_time, current_time + 5], np.column_stack((q, home)))
+            PiecewisePolynomial.FirstOrderHold([current_time, current_time + 0.1], np.column_stack((q, home)))
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.GO_HOME)
     
@@ -246,14 +246,14 @@ class Planner(LeafSystem):
         )
         # keep the hand closed
         state.get_mutable_abstract_state(int(self._trag_hand_index)).set_value(
-            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 5], np.array([[0.0, 0.0]]).T)
+            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 5], np.array([[0.0], [0.0]]).T)
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.MOVE_TO_BALLPIT)
     
     def Pour(self, context, state):
         print('POURING')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        final_pose = initial_pose @ RigidTransform(RollPitchYaw(0.75*np.pi, 0, 0))
+        final_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0.75*np.pi, 0, 0)))
 
         X_G_traj = PiecewisePose.MakeLinear([context.get_time(), context.get_time() + 5,
                                              context.get_time() + 10], [initial_pose, final_pose, initial_pose])
@@ -274,7 +274,7 @@ class Planner(LeafSystem):
         grasp_pose, final_query_points = self.get_input_port(self._basket_grasp_index).Eval(context)
 
         # TODO: FIX clearance pose
-        clearance_pose = RigidTransform(RollPitchYaw(-np.pi / 2, 0, np.pi/2), [0, -0.5, 0.3]) 
+        clearance_pose = RigidTransform(RollPitchYaw(0, 0, np.pi/2), [0, -0.5, 1.0]) 
         frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), True)
 
         #debugging: keep track of trajectory frames

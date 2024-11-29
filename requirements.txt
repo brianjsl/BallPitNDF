@@ -1,5 +1,5 @@
 torch==2.3.1
-torvision==0.18.1
+torchvision==0.18.1
 torchaudio==2.3.1
 drake
 healpy
@@ -14,7 +14,7 @@ plotly
 pykdtree
 scikit_learn
 scipy
-torch_scatter
 trimesh
 yacs
 opencv-python
+hydra-core

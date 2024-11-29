@@ -25,7 +25,7 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
 
     frames = {}
 
-    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.2]) # For panda z-axis is the normal
+    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.12]) # For panda z-axis is the normal
 
     pregrasp_pose = grasp_pose @ X_G_grasp_pregrasp
 

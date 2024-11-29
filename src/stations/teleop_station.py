@@ -122,20 +122,20 @@ directives:
         parent: camera2_origin
         child: camera2::base
 
-    - add_frame:
-        name: camera3_origin
-        X_PF:
-            base_frame: world
-            rotation: !Rpy {{deg: [0, 0, 90.0]}}
-            translation: [.5, 0, -.5] 
+    # - add_frame:
+    #     name: camera3_origin
+    #     X_PF:
+    #         base_frame: world
+    #         rotation: !Rpy {{deg: [0, 0, 90.0]}}
+    #         translation: [.5, 0, -.5] 
 
-    - add_model:
-        name: camera3
-        file: package://manipulation/camera_box.sdf
+    # - add_model:
+    #     name: camera3
+    #     file: package://manipulation/camera_box.sdf
 
-    - add_weld:
-        parent: camera3_origin
-        child: camera3::base
+    # - add_weld:
+    #     parent: camera3_origin
+    #     child: camera3::base
     
     - add_model:
         name: bin0
