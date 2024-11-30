@@ -12,10 +12,6 @@ from pathlib import Path
 from src.modules.grasping.lndf_robot.opt.optimizer_lite import Demo
 from hydra.utils import get_original_cwd
 
-torch.manual_seed(27)
-np.random.seed(42)
-
-
 class LocalNDF:
     def __init__(self, lndf_cfg: DictConfig):
 

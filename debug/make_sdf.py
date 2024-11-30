@@ -4,7 +4,7 @@ import argparse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-name', type=str, default='wooden_basket')
+    parser.add_argument('-name', type=str, default='sphere')
     parser.add_argument('-scale', type=float, default=2)
     parser.add_argument('-mass', type=float, default=0.5)
     args = parser.parse_args()

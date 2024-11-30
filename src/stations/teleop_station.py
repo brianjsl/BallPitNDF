@@ -139,7 +139,7 @@ directives:
     
     - add_model:
         name: bin0
-        file: package://drake_models/manipulation_station/bin.sdf
+        file: file://{get_original_cwd()}/src/assets/ballpit/bin.sdf
         default_free_body_pose:
             bin_base:
                 translation: [-0.5, -0.5, 0]
@@ -149,7 +149,7 @@ directives:
         env_directives += f"""
     - add_model:
         name: ball_{i}
-        file: file://{get_original_cwd()}/src/assets/sphere/sphere.sdf
+        file: file://{get_original_cwd()}/src/assets/sphere/sphere_small.sdf
         default_free_body_pose:
             sphere_body_link:
                 translation: [{0.5 + np.random.choice([0.1, -0.1], p = [0.5, 0.5])}, {0.15*(random.random()-0.5)}, 0.8]
@@ -162,7 +162,7 @@ def MakePandaManipulationStation(
     meshcat: Meshcat,
     panda_arm_name: str = "panda_arm",
     panda_hand_name: str = "panda_hand",
-    time_step: float = 1e-4,
+    time_step: float = 5e-5,
     camera_prefix: str = "camera",
 ):
     """

@@ -7,7 +7,8 @@ This is the final project of Brian Lee and Eric Chen for [6.4210 (Robotic Manipu
 Create a new conda environment using `conda create -n ballpitndf python=3.11 pip`. Then activate this environment
 with `conda activate ballpitndf`. Install the required packages using `pip install -r requirements.txt`.
 Then, install torch_scatter with `pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+${CUDA_VERSION}.html`
-where you can replace `${CUDA_VERSION}` with your version of CUDA (supported: `cpu` and `cu121`).
+where you can replace `${CUDA_VERSION}` with your version of CUDA (supported: `cpu` and `cu121`). Python version *must* 
+be 3.11 as either torch_scatter or drake doesn't support other versions.
 
 ### Mac/Linux Users:
 

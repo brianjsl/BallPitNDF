@@ -25,7 +25,7 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
 
     frames = {}
 
-    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.07]) # For panda z-axis is the normal
+    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.05]) # For panda z-axis is the normal
 
     pregrasp_pose = grasp_pose @ X_G_grasp_pregrasp
 
@@ -75,6 +75,5 @@ def MakeGraspTrajectories(frames: Dict[str, Tuple[float,RigidTransform]]) -> Tup
         poses.append(pose)
 
         hand_samples.append(opened if is_open else closed)
-    print(f'gripper hand: {hand_samples}')
 
     return PiecewisePose.MakeLinear(sample_times, poses), PiecewisePolynomial.FirstOrderHold(sample_times, np.array(hand_samples).T)

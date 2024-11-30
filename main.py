@@ -25,6 +25,7 @@ import hydra
 import plotly.express as px
 from hydra.utils import get_original_cwd
 from src.modules.kinematics import Planner, AddPandaDifferentialIK
+import torch
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -85,7 +86,8 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     )
 
     # Planner
-    planner = builder.AddSystem(Planner(meshcat, plant))
+    planner_system = Planner(meshcat, plant)
+    planner = builder.AddSystem(planner_system)
     builder.Connect(
         panda_station.GetOutputPort("body_poses"),
         planner.GetInputPort("body_poses")
@@ -146,14 +148,14 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         builder, station.GetOutputPort("query_object"), meshcat
     )
 
-    return builder.Build(), None, visualizer
+    return builder.Build(), planner_system, visualizer
 
 
 @hydra.main(config_path='src/config', config_name='pouring')
 def pouring_demo(cfg: DictConfig) -> bool:
     meshcat = StartMeshcat()
 
-    diagram, plant, visualizer = BuildPouringDiagram(meshcat, cfg)
+    diagram, planner_system, visualizer = BuildPouringDiagram(meshcat, cfg)
 
     # debug: visualize merged point cloud
     # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
@@ -172,27 +174,35 @@ def pouring_demo(cfg: DictConfig) -> bool:
     meshcat.StartRecording()
 
     # run as fast as possible
-    simulator.set_target_realtime_rate(1)
+    simulator.set_target_realtime_rate(0)
     meshcat.AddButton("Stop Simulation", "Escape")
     print("Press Escape to stop the simulation")
-
-    # draw pose of gripper in initial pose
-    station = diagram.GetSubsystemByName("PandaManipulationStation")
 
     print('Running Simulation')
 
     while meshcat.GetButtonClicks("Stop Simulation") < 1:
-        if cfg.max_time != -1 and simulator.get_context().get_time() > cfg.max_time:
-            raise Exception("Took too long")
-        simulator.AdvanceTo(simulator.get_context().get_time() + 2.0)
+        if planner_system.is_done:
+            break
+        try: 
+            if cfg.max_time != -1 and simulator.get_context().get_time() > cfg.max_time:
+                raise Exception("Took too long")
+            simulator.AdvanceTo(simulator.get_context().get_time() + 2.0)
         # stats = diagram.get_output_port().Eval(simulator.get_context())
-        meshcat.StopRecording()
+        except Exception as e:
+            print(f'Exception caught: {e}')
+            break
+    meshcat.StopRecording()
     meshcat.PublishRecording()
     meshcat.DeleteButton("Stop Simulation")
     return True
 
 if __name__ == '__main__':
     logging.getLogger('drake').addFilter(NoDiffIKWarnings())
+
+    # for reproducability. When testing grasp poses of the NDF disable.
+    torch.manual_seed(33)
+    np.random.seed(34)
+    random.seed(37)
 
     pouring_demo()
 
