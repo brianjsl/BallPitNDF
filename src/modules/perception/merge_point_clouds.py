@@ -52,34 +52,6 @@ class MergePointClouds(LeafSystem):
         
         self._camera_body_indices = camera_body_indices
     
-    # def GetPointCloud(self, context, output):
-    #     # Check if inputs have changed
-    #     # Implement caching mechanism here...
-
-    #     # Process point clouds in parallel
-    #     from concurrent.futures import ThreadPoolExecutor
-
-    #     def process_cloud(i):
-    #         cloud = self.get_input_port(self._camera_ports[i]).Eval(context)
-    #         cropped_cloud = cloud.Crop(self._crop_lower, self._crop_upper)
-    #         # Early downsampling
-    #         downsampled_cloud = cropped_cloud.VoxelizedDownSample(voxel_size=0.01)
-    #         # Optional: Skip normal estimation if not needed
-    #         downsampled_cloud.EstimateNormals(radius=0.05, num_closest=10)
-    #         X_WC = body_poses[self._camera_body_indices[i]]
-    #         downsampled_cloud.FlipNormalsTowardPoint(X_WC.translation())
-    #         return downsampled_cloud
-
-    #     body_poses = self.get_input_port(self.GetInputPort("body_poses").get_index()).Eval(context)
-
-    #     with ThreadPoolExecutor() as executor:
-    #         pcd = list(executor.map(process_cloud, range(self._num_cameras)))
-
-    #     merged_pcd = Concatenate(pcd)
-    #     # Final downsampling if necessary
-    #     down_sampled_pcd = merged_pcd.VoxelizedDownSample(voxel_size=0.005)
-    #     output.set_value(down_sampled_pcd)
-    
     def GetPointCloud(self, context, output):
         if hasattr(self, '_cached_point_cloud'):
             output.set_value(self._cached_point_cloud)

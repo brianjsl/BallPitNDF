@@ -20,6 +20,10 @@ Finally, install `gcc` with `conda install -c conda-forge gcc=12.1.0` and get `X
 `sudo apt-get install xvfb` if you have a device with CUDA (along with any other additional nvidia cuda drivers
 neccesary).
 
+### Texture/Demo/Checkpoint Installation.
+
+Please run `source scripts/setup.sh`.
+
 ## Running the Simulation
 
 To run the simulation run `python -m main`.
@@ -40,10 +44,21 @@ A brief documentation of the major files in our code:
 * `merge_point_clouds.py`: Introuces the `MergePointClouds` system which combines the point clouds of a station 
 into a single point cloud. For now it only concatenates and assumes calibrated point clouds (TODO: add camera
 calibration for uncalibrated cameras using ICP)
+* `segment.py` (TODO: Segment Anything module that segments/masks the point cloud for future processing)
+
+### Grasping
+
 * `grasper.py`: Contains the `LNDFGrasper` system that does an energy optimization to find suitable grasp poses 
 to grasp objects (such as the basket). The main call is to `pose_selector` which is in the `lndf_robot` module.
+* `pose_selector.py`: Contains the `LocalNDF` wrapper class that makes calls to models in the `lndf_robot` submodule
+to do the energy minimization from the given demonstrations.
 
-### LNDF Robot
+### Kinematics
+
+* `diff_ik.py`: Contains a custom Differential IK class that sets joints limits for the panda arm (the hand is done
+manually rather than through an InverseDynamicsDriver).
+* `grasp_utils.py`: Utility functions to create grasp trajectories from a set of keypoints.
+* `planner.py`: Planner System that plans the whole pouring process splitting into 8 distinct states. 
 
 ### Debugging
 
