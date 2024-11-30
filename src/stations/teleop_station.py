@@ -55,7 +55,7 @@ directives:
         child: panda_hand::panda_hand
         X_PC:
             translation: [0, 0, 0]
-            rotation: !Rpy { deg: [0, 0, -45] }
+            rotation: !Rpy { deg: [0, 0, 0] }
 """
 
     # description of objects in env
@@ -152,7 +152,7 @@ directives:
         file: file://{get_original_cwd()}/src/assets/sphere/sphere.sdf
         default_free_body_pose:
             sphere_body_link:
-                translation: [{0.5 + 0.1*(random.random()-0.5)}, {0.1*(random.random()-0.5)}, 0.8]
+                translation: [{0.5 + np.random.choice([0.1, -0.1], p = [0.5, 0.5])}, {0.15*(random.random()-0.5)}, 0.8]
 """
     return robot_directives, env_directives
 

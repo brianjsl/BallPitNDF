@@ -6,9 +6,20 @@ This is the final project of Brian Lee and Eric Chen for [6.4210 (Robotic Manipu
 
 Create a new conda environment using `conda create -n ballpitndf python=3.11 pip`. Then activate this environment
 with `conda activate ballpitndf`. Install the required packages using `pip install -r requirements.txt`.
-Then, install torch_scatter with `pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+cu121.html`.
+Then, install torch_scatter with `pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+${CUDA_VERSION}.html`
+where you can replace `${CUDA_VERSION}` with your version of CUDA (supported: `cpu` and `cu121`).
+
+### Mac/Linux Users:
+
+An additional pykdtree library must be installed on Unix-based devices as:
+`pip install --no-binary pykdtree --force pykdtree`.
+
+### Windows/CUDA Support:
 Finally, install `gcc` with `conda install -c conda-forge gcc=12.1.0` and get `Xvbf` with 
-`sudo apt-get install xvfb`.
+`sudo apt-get install xvfb` if you have a device with CUDA (along with any other additional nvidia cuda drivers
+neccesary).
+
+## Running the Simulation
 
 To run the simulation run `python -m main`.
 
@@ -32,7 +43,6 @@ calibration for uncalibrated cameras using ICP)
 to grasp objects (such as the basket). The main call is to `pose_selector` which is in the `lndf_robot` module.
 
 ### LNDF Robot
-* `
 
 ### Debugging
 

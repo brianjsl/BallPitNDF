@@ -79,6 +79,8 @@ class Planner(LeafSystem):
             lambda: AbstractValue.Make(RigidTransform()),
             self.CalcGripperPose,
         )
+
+        #Position to Command for Hand (the calculation is direct and does not go to a diffIK solver)
         self.DeclareVectorOutputPort("hand_position", 2, self.CalcHandPosition)
 
         # control mode
@@ -94,7 +96,7 @@ class Planner(LeafSystem):
         )
 
 
-        # When going home
+        # Position to Command for Panda
         self.DeclareVectorOutputPort(
             "panda_position_command", ARM_POSITIONS, self.CalcPandaPosition
         )
@@ -119,7 +121,7 @@ class Planner(LeafSystem):
         )
 
         # Hand Pose
-        self._trag_hand_index = self.DeclareAbstractState(
+        self._traj_hand_index = self.DeclareAbstractState(
             AbstractValue.Make(PiecewisePolynomial())
         )
 
@@ -139,56 +141,94 @@ class Planner(LeafSystem):
     
         self._is_done = False
 
+    # def Update(self, context, state):
+    #     mode = state.get_mutable_abstract_state(int(self._mode_index))
+    #     mode_value = mode.get_value()
+
+    #     current_time = context.get_time()
+    #     print(f't: {current_time:.1f}, mode: {mode_value}')
+
+    #     match mode_value:
+    #         case PlannerState.INITIAL_STATE:
+    #             self.GoHome(context, state, current_time)
+    #         case PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
+    #             start_time = context.get_abstract_state(int(self._times_index)).get_value()["initial"]
+    #             if current_time > start_time + 0.5:
+    #                 self.PlanGrasp(context, state)
+    #         case PlannerState.MOVE_TO_BASKET:
+    #             X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
+    #             if not X_G_traj.is_time_in_range(current_time):
+    #                 self.PlanPour(context, state)
+    #         case PlannerState.MOVE_TO_BALLPIT:
+    #             X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
+    #             if not X_G_traj.is_time_in_range(current_time):
+    #                 self.Pour(context, state)
+    #         case PlannerState.POUR_TO_BALLPIT:
+    #             X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
+    #             if not X_G_traj.is_time_in_range(current_time):
+    #                 self.ReturnBasket(context, state)
+    #         case PlannerState.RETURN_BASKET:
+    #             X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
+    #             if not X_G_traj.is_time_in_range(current_time):
+    #                 self.GoHome(context, state, current_time)
+    #                 self._is_done = True
+    #         case PlannerState.GO_HOME:
+    #             q_traj = context.get_abstract_state(int(self._traj_q_index)).get_value()
+    #             if not q_traj.is_time_in_range(current_time):
+    #                 if not self._is_done:
+    #                     state.get_mutable_abstract_state(int(self._times_index)).set_value({"initial": current_time})
+    #                     state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE)
+    #                 else:
+    #                     print("Pouring Done.")
+    #                     return
+
     def Update(self, context, state):
         mode = state.get_mutable_abstract_state(int(self._mode_index))
         mode_value = mode.get_value()
-
         current_time = context.get_time()
         print(f't: {current_time:.1f}, mode: {mode_value}')
 
-        match mode_value:
-            case PlannerState.INITIAL_STATE:
-                self.GoHome(context, state, current_time)
-            case PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
-                start_time = context.get_abstract_state(int(self._times_index)).get_value()["initial"]
-                if current_time > start_time + 0.5:
-                    self.PlanGrasp(context, state)
-            case PlannerState.MOVE_TO_BASKET:
-                X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
-                if not X_G_traj.is_time_in_range(current_time):
-                    self.PlanPour(context, state)
-            case PlannerState.MOVE_TO_BALLPIT:
-                X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
-                if not X_G_traj.is_time_in_range(current_time):
-                    self.Pour(context, state)
-            case PlannerState.POUR_TO_BALLPIT:
-                X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
-                if not X_G_traj.is_time_in_range(current_time):
-                    self.ReturnBasket(context, state)
-            case PlannerState.RETURN_BASKET:
-                X_G_traj = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
-                if not X_G_traj.is_time_in_range(current_time):
-                    self.GoHome(context, state, current_time)
-                    self._is_done = True
-            case PlannerState.GO_HOME:
-                q_traj = context.get_abstract_state(int(self._traj_q_index)).get_value()
-                if not q_traj.is_time_in_range(current_time):
-                    if not self._is_done:
-                        state.get_mutable_abstract_state(int(self._times_index)).set_value({"initial": current_time})
-                        state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE)
-                    else:
-                        print("Pouring Done.")
-                        return
+        # Store trajectories and times in local variables
+        traj_X_G = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
+        traj_end_time = traj_X_G.end_time() if traj_X_G.get_number_of_segments() > 0 else None
+
+        if mode_value == PlannerState.INITIAL_STATE:
+            self.GoHome(context, state, current_time)
+        elif mode_value == PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
+            start_time = context.get_abstract_state(int(self._times_index)).get_value()["initial"]
+            if current_time > start_time + 0.2:
+                self.PlanGrasp(context, state)
+        elif mode_value in [PlannerState.MOVE_TO_BASKET, PlannerState.MOVE_TO_BALLPIT,
+                            PlannerState.POUR_TO_BALLPIT, PlannerState.RETURN_BASKET]:
+            if traj_end_time and current_time > traj_end_time:
+                next_mode = {
+                    PlannerState.MOVE_TO_BASKET: self.PlanPour,
+                    PlannerState.MOVE_TO_BALLPIT: self.Pour,
+                    PlannerState.POUR_TO_BALLPIT: self.ReturnBasket,
+                    PlannerState.RETURN_BASKET: lambda c, s: self.GoHome(c, s, current_time)
+                }
+                next_mode[mode_value](context, state)
+        elif mode_value == PlannerState.GO_HOME:
+            traj_q = context.get_abstract_state(int(self._traj_q_index)).get_value()
+            traj_q_end_time = traj_q.end_time()
+            if current_time > traj_q_end_time:
+                if not self._is_done:
+                    state.get_mutable_abstract_state(int(self._times_index)).set_value({"initial": current_time})
+                    state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE)
+                else:
+                    print("Pouring Done.")
+        else:
+            raise RuntimeError(f"Unknown State: {mode_value}")
     
     def GoHome(self, context, state, current_time):
         print('GOING HOME')
 
         # initial Panda position
         q = self.get_input_port(self._panda_position_index).Eval(context)
-        home = copy(context.get_discrete_state(int(self._q0_index)).get_value())
+        home = np.copy(context.get_discrete_state(int(self._q0_index)).get_value())
         home[0] = q[0] # Don't reset the first joint (breaks)
         state.get_mutable_abstract_state(int(self._traj_q_index)).set_value(
-            PiecewisePolynomial.FirstOrderHold([current_time, current_time + 0.1], np.column_stack((q, home)))
+            PiecewisePolynomial.FirstOrderHold([current_time, current_time + 0.2], np.column_stack((q, home)))
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.GO_HOME)
     
@@ -199,13 +239,13 @@ class Planner(LeafSystem):
         draw_query_pts(self._meshcat, final_query_points)
 
         # TODO: Add clearance pose
-        clearance_pose = RigidTransform(RollPitchYaw(-np.pi / 2, 0, np.pi/2), [0, -0.5, 0.3]) 
+        clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.7]) 
         frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), False)
 
         #debugging: keep track of trajectory frames
         AddMeshcatTriad(self._meshcat, 'initial', X_PT=frames['initial'][1])
         AddMeshcatTriad(self._meshcat, 'prepare', X_PT=frames['prepare'][1])
-        AddMeshcatTriad(self._meshcat, 'pre/post grasp', X_PT=frames['pregrasp'][1])
+        AddMeshcatTriad(self._meshcat, 'pregrasp', X_PT=frames['pregrasp'][1])
         AddMeshcatTriad(self._meshcat, 'grasp', X_PT=frames['grasp_start'][1])
         AddMeshcatTriad(self._meshcat, 'clearance', X_PT=frames['clearance'][1])
 
@@ -216,7 +256,7 @@ class Planner(LeafSystem):
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
             X_G_traj
         )
-        state.get_mutable_abstract_state(int(self._trag_hand_index)).set_value(
+        state.get_mutable_abstract_state(int(self._traj_hand_index)).set_value(
             hand_traj
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.MOVE_TO_BASKET)
@@ -226,7 +266,7 @@ class Planner(LeafSystem):
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
 
         # have final pos be above the bin
-        final_pos = self._bin_pos + np.array([0, 0, 0.4])
+        final_pos = self._bin_pos + np.array([0, 0, 0.6])
         final_pose = RigidTransform(final_pos)
 
         # just linearly interpolate between the grasping phase
@@ -235,7 +275,7 @@ class Planner(LeafSystem):
             X_G_traj
         )
         # keep the hand closed
-        state.get_mutable_abstract_state(int(self._trag_hand_index)).set_value(
+        state.get_mutable_abstract_state(int(self._traj_hand_index)).set_value(
             PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 5], np.array([[0.0], [0.0]]).T)
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.MOVE_TO_BALLPIT)
@@ -251,9 +291,9 @@ class Planner(LeafSystem):
             X_G_traj
         )
 
-        state.get_mutable_abstract_state(int(self._trag_hand_index)).set_value(
+        state.get_mutable_abstract_state(int(self._traj_hand_index)).set_value(
             PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 5,
-                                                context.get_time() + 10], np.array([[0.0, 0.0, 0.0]]).T)
+                                                context.get_time() + 10], np.array([[[0.0], [0.0], [0.0]]]).T)
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.POUR_TO_BALLPIT)
 
@@ -264,7 +304,8 @@ class Planner(LeafSystem):
         grasp_pose, final_query_points = self.get_input_port(self._basket_grasp_index).Eval(context)
 
         # TODO: FIX clearance pose
-        clearance_pose = RigidTransform(RollPitchYaw(0, 0, np.pi/2), [0, -0.5, 1.0]) 
+        clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.7]) 
+
         frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), True)
 
         #debugging: keep track of trajectory frames
@@ -280,7 +321,7 @@ class Planner(LeafSystem):
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
             X_G_traj
         )
-        state.get_mutable_abstract_state(int(self._trag_hand_index)).set_value(
+        state.get_mutable_abstract_state(int(self._traj_hand_index)).set_value(
             hand_traj
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.GO_HOME)
@@ -319,7 +360,7 @@ class Planner(LeafSystem):
         closed = np.array([0.0, 0.0])
 
         if mode_value in [PlannerState.MOVE_TO_BASKET, PlannerState.RETURN_BASKET]:
-            hand_trajectory = context.get_abstract_state(int(self._trag_hand_index)).get_value()
+            hand_trajectory = context.get_abstract_state(int(self._traj_hand_index)).get_value()
             if hand_trajectory.get_number_of_segments() > 0 and hand_trajectory.is_time_in_range(current_time):
                 output.SetFromVector(hand_trajectory.value(current_time))
         elif mode_value in [PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE, PlannerState.INITIAL_STATE, PlannerState.GO_HOME]:

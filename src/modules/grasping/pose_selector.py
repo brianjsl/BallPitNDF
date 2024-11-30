@@ -12,6 +12,9 @@ from pathlib import Path
 from src.modules.grasping.lndf_robot.opt.optimizer_lite import Demo
 from hydra.utils import get_original_cwd
 
+torch.manual_seed(27)
+np.random.seed(42)
+
 
 class LocalNDF:
     def __init__(self, lndf_cfg: DictConfig):
@@ -22,7 +25,6 @@ class LocalNDF:
         #generate query points 
         self.query_point_cfg = lndf_cfg['query_point']
         self.query_points = self._create_query_pts(self.query_point_cfg['type'], self.query_point_cfg['args'])
-        torch.manual_seed(29)
 
         #generate eval_dir
         self.eval_dir = osp.join(get_original_cwd(), lndf_cfg['eval_dir'])

@@ -128,8 +128,8 @@ class LNDFGrasper(LeafSystem):
         final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat) 
 
         # offset to go from end effector pose to gripper
-        # Rotation_mat = RigidTransform(RotationMatrix(RollPitchYaw([0, 0,0])))
-        offset_transform = RigidTransform([0, 0, -0.05])
+        # Rotation_mat = RigidTransform(RotationMatrix(RollPitchYaw([0, 0, 0])))
+        offset_transform = RigidTransform([0, 0, -0.02])
         X_WB = RigidTransform(best_pose_mat) @ offset_transform 
 
         output.set_value((X_WB, final_query_pts))

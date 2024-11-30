@@ -10,7 +10,7 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
     Inspired by https://github.com/RussTedrake/manipulation/blob/187576150412cd4f7bb1aac540f29d6cfdc76600/manipulation/pick.py#L7:
     
     Trajectory pipelline:
-    initial -> prepare -> pregrasp -> grasp_start -> grasp_end -> post_pick -> clearance
+    initial -> prepare -> pregrasp -> grasp_start -> grasp_end -> stall -> clearance
 
     Args:
     initial_pose: The initial pose of the object X_Ginitial
@@ -25,7 +25,7 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
 
     frames = {}
 
-    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.12]) # For panda z-axis is the normal
+    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.07]) # For panda z-axis is the normal
 
     pregrasp_pose = grasp_pose @ X_G_grasp_pregrasp
 
@@ -50,7 +50,8 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
         'grasp_start': (t0 + prepare_time * 2 + 1.5, grasp_pose, not returning),
         'grasp_end': (t0 + prepare_time * 2 + 3.5, grasp_pose, returning),
         'postgrasp': (t0 + prepare_time * 2 + 5.5, postgrasp_pose, returning),
-        'clearance': (t0 + prepare_time * 2 + 5.5 + clearance_time, clearance_pose, returning)
+        'stall': (t0 + prepare_time * 2 + 6.5, postgrasp_pose, returning),
+        'clearance': (t0 + prepare_time * 2 + 6.5 + clearance_time, clearance_pose, returning)
     }
 
     return frames
@@ -66,7 +67,7 @@ def MakeGraspTrajectories(frames: Dict[str, Tuple[float,RigidTransform]]) -> Tup
     closed = np.array([0.0, 0.0])
     hand_samples = []
 
-    keypoint_names = ['initial', 'prepare', 'pregrasp', 'grasp_start', 'grasp_end', 'postgrasp', 'clearance']
+    keypoint_names = ['initial', 'prepare', 'pregrasp', 'grasp_start', 'grasp_end', 'postgrasp', 'stall', 'clearance']
 
     for keypoint in keypoint_names:
         time, pose, is_open = frames[keypoint]
@@ -74,5 +75,6 @@ def MakeGraspTrajectories(frames: Dict[str, Tuple[float,RigidTransform]]) -> Tup
         poses.append(pose)
 
         hand_samples.append(opened if is_open else closed)
+    print(f'gripper hand: {hand_samples}')
 
     return PiecewisePose.MakeLinear(sample_times, poses), PiecewisePolynomial.FirstOrderHold(sample_times, np.array(hand_samples).T)

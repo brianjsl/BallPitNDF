@@ -57,7 +57,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
                 plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[0],
                 plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[0],
                 plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
-                # plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0], # remove bottom "cheat" camera
+                # plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0], # bottom "cheat" camera
             ],
             meshcat=meshcat,
         ),
@@ -104,13 +104,6 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         station.GetOutputPort("panda_arm_position_measured"),
         planner.GetInputPort("panda_position")
     )
-
-    # builder.Connect(
-    #     station.GetOutputPort("panda_arm_torque_external"),
-    #     planner.GetInputPort("external_torque")
-    # )
-
-    robot = station.GetSubsystemByName("panda_controller").get_multibody_plant_for_control()
 
     # DiffIK
     time_step = plant.time_step()
@@ -166,9 +159,11 @@ def pouring_demo(cfg: DictConfig) -> bool:
     # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
     # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
     # pc = merge_point_clouds.GetOutputPort('point_cloud').Eval(context)
-    # np.save(f'{get_original_cwd()}/outputs/basket_merged_point_cloud.npy', pc.xyzs())
     # fig = px.scatter_3d(x = pc.xyzs()[0,:], y=pc.xyzs()[1,:], z=pc.xyzs()[2,:])
     # fig.show()
+
+    # debug: save point cloud
+    # np.save(f'{get_original_cwd()}/outputs/basket_merged_point_cloud.npy', pc.xyzs())
 
     simulator = Simulator(diagram)
 
