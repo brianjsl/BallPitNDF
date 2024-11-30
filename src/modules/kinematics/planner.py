@@ -25,6 +25,9 @@ from manipulation.meshcat_utils import AddMeshcatTriad
 from debug.visualize_utils import draw_query_pts
 from src.modules.kinematics.grasp_utils import MakeGraspFrames, MakeGraspTrajectories
 
+# By UNPOURING, we mean the state of waiting 
+# for the bucket to get back to level
+
 class PlannerState(Enum):
     INITIAL_STATE = 1
     WAIT_FOR_OBJECTS_TO_SETTLE = 2
@@ -236,14 +239,14 @@ class Planner(LeafSystem):
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
 
         # So we don't crash into the ballpit
-        intermediate_pos = self._bin_pos + np.array([0.5, 0, 0.65])
+        intermediate_pos = self._bin_pos + np.array([0.5, 0, 0.6])
         intermediate_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), intermediate_pos)
         
         # have final pos be above the bin
-        final_pos = self._bin_pos + np.array([0.25, 0, 0.65])
+        final_pos = self._bin_pos + np.array([0.1, 0, 0.6])
         final_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), final_pos)
 
-        X_G_traj = PiecewisePose.MakeLinear([context.get_time(), context.get_time()+3, context.get_time() + 4], [initial_pose, intermediate_pose, final_pose])
+        X_G_traj = PiecewisePose.MakeLinear([context.get_time(), context.get_time()+3, context.get_time() + 6], [initial_pose, intermediate_pose, final_pose])
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
             X_G_traj
         )
@@ -252,50 +255,56 @@ class Planner(LeafSystem):
 
         # keep the hand closed
         state.get_mutable_abstract_state(int(self._traj_hand_index)).set_value(
-            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 3, context.get_time() + 3.5], np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]).T)
+            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 3, context.get_time() + 6], np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]).T)
         )
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(PlannerState.MOVE_TO_BALLPIT)
     
     def Pour(self, context, state):
         print('POURING')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        final_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0.75*np.pi, 0, 0)))
+        rot_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0.25*np.pi, 0, 0)), [0, 0, 0]) 
+        inter_pose = initial_pose @ RigidTransform([0, -0.2, -0.1]) 
+        inter_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), [-0.1, -0.4, 0.65])
+        final_pose =  RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), [0.1, -0.4, 0.6])
 
-        X_G_traj = PiecewisePose.MakeLinear([context.get_time(), context.get_time() + 1.5,
-                                             context.get_time() + 3], [initial_pose, final_pose, initial_pose])
+
+        X_G_traj = PiecewisePose.MakeLinear([context.get_time(), 
+                                             context.get_time() + 3, context.get_time() + 5, context.get_time()+8,
+                                             context.get_time()+12], [initial_pose, rot_pose, rot_pose, inter_pose, final_pose])
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
             X_G_traj
         )
 
         state.get_mutable_abstract_state(int(self._traj_hand_index)).set_value(
-            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 1.5,
-                                                context.get_time() + 3], np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]).T)
+            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 3,
+                                                context.get_time() + 5, context.get_time()+8, 
+                                                context.get_time() + 12 
+                                                ], np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0,0.0]]).T)
         )
     
     def UnPour(self, context, state):
         print('UNPOURING')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        final_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(-0.75*np.pi, 0, 0)))
+        final_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), [0, -0.5, 0.6])
 
-        X_G_traj = PiecewisePose.MakeLinear([context.get_time(), context.get_time() + 1.5,
-                                             context.get_time() + 3], [initial_pose, final_pose, initial_pose])
+        X_G_traj = PiecewisePose.MakeLinear([context.get_time(),
+                                             context.get_time() + 3], [initial_pose, final_pose])
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
             X_G_traj
         )
 
         state.get_mutable_abstract_state(int(self._traj_hand_index)).set_value(
-            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 1.5,
-                                                context.get_time() + 3], np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]).T)
+            PiecewisePolynomial.FirstOrderHold([context.get_time(), context.get_time() + 3], np.array([[0.0, 0.0], [0.0, 0.0]]).T)
         )
 
     
     def ReturnBasket(self, context, state):
         print('RETURNING BASKET')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        grasp_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/1), [0.5, 0, 0.4])
+        grasp_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/1), [0.5, 0, 0.9])
 
         # TODO: FIX clearance pose
-        clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.7]) 
+        clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.9]) 
 
         frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), True)
 

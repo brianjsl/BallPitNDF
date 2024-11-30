@@ -162,7 +162,7 @@ def MakePandaManipulationStation(
     meshcat: Meshcat,
     panda_arm_name: str = "panda_arm",
     panda_hand_name: str = "panda_hand",
-    time_step: float = 5e-5,
+    time_step: float = 1e-4,
     camera_prefix: str = "camera",
 ):
     """

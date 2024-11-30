@@ -3,7 +3,7 @@
     <link name="basket_body_link">
       <pose>0 0 0 0 0 0</pose>
       <inertial>
-        <mass>0.000001</mass>
+        <mass>0.0001</mass>
         <pose>-0.00193 0.15145 0.00054 0 0 0</pose>
         <inertia>
           <ixx>6.27397e-02</ixx>
