@@ -5,8 +5,10 @@ This is the final project of Brian Lee and Eric Chen for [6.4210 (Robotic Manipu
 ## Requirements and Development
 
 Create a new conda environment using `conda create -n ballpitndf python=3.11 pip`. Then activate this environment
-with `conda activate ballpitndf`. Install the required packages using `pip install requirements.txt`.
-Alternatively use poetry.
+with `conda activate ballpitndf`. Install the required packages using `pip install -r requirements.txt`.
+Then, install torch_scatter with `pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+cu121.html`.
+Finally, install `gcc` with `conda install -c conda-forge gcc=12.1.0` and get `Xvbf` with 
+`sudo apt-get install xvfb`.
 
 To run the simulation run `python -m main`.
 

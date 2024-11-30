@@ -46,9 +46,9 @@ class MergePointClouds(LeafSystem):
 
         # crop and find bounding box (debug)
         # line segment represents the diagonal of the box that contains the point cloud
-        meshcat.SetLineSegments(
-            "/cropping_box",  self._crop_lower[:, None],
-            self._crop_upper[:, None])
+        # meshcat.SetLineSegments(
+        #     "/cropping_box",  self._crop_lower[:, None],
+        #     self._crop_upper[:, None])
         
         self._camera_body_indices = camera_body_indices
     
@@ -81,6 +81,10 @@ class MergePointClouds(LeafSystem):
     #     output.set_value(down_sampled_pcd)
     
     def GetPointCloud(self, context, output):
+        if hasattr(self, '_cached_point_cloud'):
+            output.set_value(self._cached_point_cloud)
+            return
+
         body_poses = self.get_input_port(
             self.GetInputPort("body_poses").get_index()
         ).Eval(context)
@@ -100,6 +104,10 @@ class MergePointClouds(LeafSystem):
 
         merged_pcd = Concatenate(pcd)
         down_sampled_pcd = merged_pcd.VoxelizedDownSample(voxel_size=0.005)
+        output.set_value(down_sampled_pcd)
+
+        # Cache the computed point cloud
+        self._cached_point_cloud = down_sampled_pcd
         output.set_value(down_sampled_pcd)
         
 

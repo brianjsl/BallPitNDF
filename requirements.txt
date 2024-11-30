@@ -1,6 +1,6 @@
-torch==2.3.1
-torchvision==0.18.1
-torchaudio==2.3.1
+torch==2.1.0
+torchvision==0.16.0
+torchaudio==2.1.0
 drake
 healpy
 manipulation
@@ -18,3 +18,5 @@ trimesh
 yacs
 opencv-python
 hydra-core
+pyvirtualdisplay
+xvfbwrapper

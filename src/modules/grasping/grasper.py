@@ -18,6 +18,7 @@ from pydrake.all import (
     RigidTransform,
     AbstractValue,
     RotationMatrix,
+    RollPitchYaw
 )
 from hydra.utils import get_original_cwd
 
@@ -127,7 +128,8 @@ class LNDFGrasper(LeafSystem):
         final_query_pts = util.transform_pcd(self.local_ndf.query_pts, best_pose_mat) 
 
         # offset to go from end effector pose to gripper
+        # Rotation_mat = RigidTransform(RotationMatrix(RollPitchYaw([0, 0,0])))
         offset_transform = RigidTransform([0, 0, -0.05])
-        X_WB = RigidTransform(best_pose_mat) @ offset_transform
+        X_WB = RigidTransform(best_pose_mat) @ offset_transform 
 
         output.set_value((X_WB, final_query_pts))

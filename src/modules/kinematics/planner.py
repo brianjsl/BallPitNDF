@@ -1,7 +1,5 @@
 from pydrake.all import (
     AbstractValue,
-    AddMultibodyPlantSceneGraph,
-    Concatenate,
     DiagramBuilder,
     InputPortIndex,
     LeafSystem,
@@ -15,8 +13,6 @@ from pydrake.all import (
     RigidTransform,
     RollPitchYaw,
     Simulator,
-    StartMeshcat,
-    UniformlyRandomRotationMatrix,
     MultibodyPlant,
     Meshcat,
     RotationMatrix
@@ -149,12 +145,6 @@ class Planner(LeafSystem):
 
         current_time = context.get_time()
         print(f't: {current_time:.1f}, mode: {mode_value}')
-
-        hand_state = self.get_input_port(self._hand_state_index).Eval(context)
-        body_poses = self.get_input_port(self._body_poses_index).Eval(context)
-
-        # pose of the gripper body
-        X_G = body_poses[int(self._gripper_body_index)]
 
         match mode_value:
             case PlannerState.INITIAL_STATE:
@@ -323,7 +313,6 @@ class Planner(LeafSystem):
         Calculate the position of the panda hand (open or closed) 
         """
         mode_value = context.get_abstract_state(int(self._mode_index)).get_value()
-        hand_state = self.get_input_port(int(self._hand_state_index)).Eval(context)
         current_time = context.get_time()
 
         opened = np.array([-0.1, 0.1])

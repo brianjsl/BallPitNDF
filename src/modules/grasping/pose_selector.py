@@ -22,7 +22,7 @@ class LocalNDF:
         #generate query points 
         self.query_point_cfg = lndf_cfg['query_point']
         self.query_points = self._create_query_pts(self.query_point_cfg['type'], self.query_point_cfg['args'])
-        torch.manual_seed(19)
+        torch.manual_seed(29)
 
         #generate eval_dir
         self.eval_dir = osp.join(get_original_cwd(), lndf_cfg['eval_dir'])
