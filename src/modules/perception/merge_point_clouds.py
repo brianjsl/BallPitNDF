@@ -38,17 +38,17 @@ class MergePointClouds(LeafSystem):
         X_B = plant.EvalBodyPoseInWorld(context, basket_body)
         margin = 0.001 
 
-        a = X_B.multiply([-0.3+margin, -0.3+margin, -0.3+margin])
-        b = X_B.multiply([0.3-margin, 0.7-margin, .3-margin])
+        a = X_B.multiply([-0.1+margin, -0.2+margin, -0.2+margin])
+        b = X_B.multiply([0.1-margin, 0.3-margin, .2-margin])
         print(a, b)
         self._crop_lower = np.minimum(a, b)
         self._crop_upper = np.maximum(a, b)
 
         # crop and find bounding box (debug)
         # line segment represents the diagonal of the box that contains the point cloud
-        # meshcat.SetLineSegments(
-        #     "/cropping_box",  self._crop_lower[:, None],
-        #     self._crop_upper[:, None])
+        meshcat.SetLineSegments(
+            "/cropping_box",  self._crop_lower[:, None],
+            self._crop_upper[:, None])
         
         self._camera_body_indices = camera_body_indices
     

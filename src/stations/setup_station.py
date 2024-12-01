@@ -44,7 +44,7 @@ directives:
     child: panda_arm::panda_link0
 - add_model:
     name: panda_hand
-    file: package://drake_models/franka_description/urdf/panda_hand.urdf
+    file: file://{get_original_cwd()}/src/assets/panda_hand/panda_hand.urdf
 - add_weld:
     parent: panda_arm::panda_link8
     child: panda_hand::panda_hand
@@ -61,7 +61,7 @@ directives:
         translation: [0, 0, -0.05]
 - add_model:
     name: basket 
-    file: file://{get_original_cwd()}/src/assets/wooden_basket/wooden_basket.sdf
+    file: file://{get_original_cwd()}/src/assets/wooden_basket_big_handle/wooden_basket.sdf
     default_free_body_pose:
         basket_body_link:
             translation: [0.5, 0, 0]
@@ -71,7 +71,7 @@ directives:
     file: package://drake_models/manipulation_station/bin.sdf
     default_free_body_pose:
         bin_base:
-            translation: [-0.5, -0.5, 0]
+            translation: [0.5, -0.5, 0]
             rotation: !Rpy {{deg: [0, 0, 90]}}
 - add_frame:
     name: camera0_origin

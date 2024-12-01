@@ -1,0 +1,34 @@
+directives:
+  num_balls: 1
+  object: mug
+  object_id: 1
+  object_name: mug
+  link_name: mug1_body_link
+max_time: -1
+lndf:
+  pc_sample_pts: 2000
+  eval_dir: outputs
+  pose_optimizer: 
+    opt_type: LNDF
+    args:
+      opt_iterations: 500
+      rand_translate: True
+      use_tsne: False
+      M_override: 20
+  query_point: 
+    type: RECT
+    args: 
+      n_pts: 1000
+      x: 0.08
+      y: 0.04
+      z1: 0.05
+      z2: 0.02
+  model: 
+    type: CONV_OCC
+    args: 
+      latent_dim: 128  # Number of voxels in convolutional occupancy network
+      model_type: pointnet  # Encoder type
+      return_features: True  # Return latent features for evaluation
+      sigmoid: False  # Use sigmoid activation on last layer
+      acts: last  # Return last activations of occupancy network
+    ckpt: lndf_weights.pth

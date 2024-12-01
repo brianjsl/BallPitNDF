@@ -172,3 +172,4 @@ pytorch_scatter/
 src/assets/wooden_basket/textures/*.png
 src/assets/sphere/textures/*
 src/assets/wooden_basket/textures.zip
+src/assets/wooden_basket_big_handle/textures/*

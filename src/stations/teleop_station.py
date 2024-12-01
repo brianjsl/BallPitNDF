@@ -29,7 +29,7 @@ from omegaconf import DictConfig
 import random
 from hydra.utils import get_original_cwd
 
-def get_directives(directives_cfg: DictConfig) -> tuple[str, str]:
+def get_directives(directives_cfg: DictConfig, object='wooden_basket_big_handle', obj_name='basket', object_id=None, link_name='basket_body_link') -> tuple[str, str]:
     # description of robot
     robot_directives = """
 directives:
@@ -70,11 +70,11 @@ directives:
         X_PC:
             translation: [0, 0, -0.05]
     - add_model:
-        name: basket 
-        file: file://{get_original_cwd()}/src/assets/wooden_basket/wooden_basket.sdf
+        name: {obj_name}
+        file: file://{get_original_cwd()}/src/assets/{object}/{(object+str(object_id)) if object_id is not None else 'wooden_basket'}.sdf
         default_free_body_pose:
-            basket_body_link:
-                translation: [0.5, 0, 0]
+            {link_name}:
+                translation: [0.4, 0, 0]
                 rotation: !Rpy {{ deg: [90, 0, 0]}}
 
     - add_frame:
@@ -142,7 +142,7 @@ directives:
         file: file://{get_original_cwd()}/src/assets/ballpit/bin.sdf
         default_free_body_pose:
             bin_base:
-                translation: [-0.5, -0.5, 0]
+                translation: [-0.2, -0.5, 0]
                 rotation: !Rpy {{deg: [0, 0, 90]}}
 """
     for i in range(directives_cfg.num_balls):
@@ -152,7 +152,7 @@ directives:
         file: file://{get_original_cwd()}/src/assets/sphere/sphere_small.sdf
         default_free_body_pose:
             sphere_body_link:
-                translation: [{0.5 + np.random.choice([0.1, -0.1], p = [0.5, 0.5])}, {0.15*(random.random()-0.5)}, 0.8]
+                translation: [0.4, 0, 0.15]
 """
     return robot_directives, env_directives
 
@@ -281,9 +281,9 @@ def MakePandaManipulationStation(
         num_panda_arm_positions + num_panda_hand_positions
     )
 
-    kp = [100] * num_panda_arm_and_hand_positions
-    ki = [1] * num_panda_arm_and_hand_positions
-    kd = [20] * num_panda_arm_and_hand_positions
+    kp = [5000] * num_panda_arm_and_hand_positions
+    ki = [50] * num_panda_arm_and_hand_positions
+    kd = [1000] * num_panda_arm_and_hand_positions
 
     panda_controller = builder.AddSystem(
         InverseDynamicsController(
