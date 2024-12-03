@@ -45,6 +45,17 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
 
     plant = station.GetSubsystemByName("plant")
 
+    # get cameras from station
+    num_cameras = 3
+    camera_body_indices=[
+        plant.GetBodyIndices(plant.GetModelInstanceByName(f"camera{i}"))[0]
+        for i in range(num_cameras)
+    ]
+    cameras = [
+        station.GetSubsystemByName(f"camera{i}")
+        for i in range(3)
+    ]
+
     merge_point_clouds = builder.AddNamedSystem(
         "merge_point_clouds",
         MergePointClouds(
@@ -58,6 +69,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
                 plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
                 # plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0], # bottom "cheat" camera
             ],
+            cameras=cameras,
             meshcat=meshcat,
         ),
     )
@@ -73,10 +85,21 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
 
     for i in range(3):
         point_cloud_port = f"camera{i}_point_cloud"
+        rgb_port = f"camera{i}_rgb_image"
+        depth_port = f"camera{i}_depth_image"
         builder.Connect(
             panda_station.GetOutputPort(point_cloud_port),
             merge_point_clouds.GetInputPort(point_cloud_port),
         )
+        builder.Connect(
+            panda_station.GetOutputPort(rgb_port),
+            merge_point_clouds.GetInputPort(rgb_port),
+        )
+        builder.Connect(
+            panda_station.GetOutputPort(depth_port),
+            merge_point_clouds.GetInputPort(depth_port),
+        )
+
 
     builder.Connect(
         panda_station.GetOutputPort("body_poses"),
