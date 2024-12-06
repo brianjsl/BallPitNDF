@@ -35,6 +35,7 @@ from hydra.utils import get_original_cwd
 from src.modules.kinematics import Planner, AddPandaDifferentialIK
 import torch
 from src.stations.setup_diagram import BuildPouringDiagram
+from manipulation.meshcat_utils import AddMeshcatTriad
 
 
 class NoDiffIKWarnings(logging.Filter):
@@ -49,16 +50,29 @@ def pouring_demo(cfg: DictConfig) -> bool:
     diagram, planner_system, visualizer = BuildPouringDiagram(meshcat, cfg)
 
     # debug: visualize merged point cloud
-    merge_point_clouds = diagram.GetSubsystemByName("merge_point_clouds")
-    context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
-    pc = merge_point_clouds.GetOutputPort("point_cloud").Eval(context)
-    fig = px.scatter_3d(x=pc.xyzs()[0, :], y=pc.xyzs()[1, :], z=pc.xyzs()[2, :])
-    fig.show()
+    # merge_point_clouds = diagram.GetSubsystemByName("merge_point_clouds")
+    # context = merge_point_clouds.GetMyContextFromRoot(diagram.CreateDefaultContext())
+    # pc = merge_point_clouds.GetOutputPort("point_cloud").Eval(context)
+    # fig = px.scatter_3d(x=pc.xyzs()[0, :], y=pc.xyzs()[1, :], z=pc.xyzs()[2, :])
+    # fig.show()
 
-    while True:
-        import time
+    station = diagram.GetSubsystemByName("PandaManipulationStation")
+    plant = station.GetSubsystemByName("plant")
+    plant_context = plant.GetMyContextFromRoot(diagram.CreateDefaultContext())
 
-        time.sleep(1)
+    ballpit_body = plant.GetBodyByName("bin_base")
+    X_WB = plant.EvalBodyPoseInWorld(plant_context, ballpit_body)
+    length = 0.63
+    width = 0.49
+    height = 0.07
+
+    upper_left_local = np.array([-width / 2, length / 2, height])
+    lower_right_local = np.array([width / 2, -length / 2, 0])
+    upper_left = X_WB.multiply(upper_left_local)
+    lower_right = X_WB.multiply(lower_right_local)
+
+    AddMeshcatTriad(meshcat, path="upper", X_PT=RigidTransform(p=upper_left))
+    AddMeshcatTriad(meshcat, path="lower", X_PT=RigidTransform(p=lower_right))
 
     # debug: save point cloud
     # np.save(f'{get_original_cwd()}/outputs/basket_merged_point_cloud.npy', pc.xyzs())
