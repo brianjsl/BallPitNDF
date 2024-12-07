@@ -3,11 +3,21 @@
 import torch
 import numpy as np
 from pydrake.all import (
-    LeafSystem, PointCloud, AbstractValue, RigidTransform, BaseField, Fields, Concatenate,
-    PixelType 
+    LeafSystem,
+    PointCloud,
+    AbstractValue,
+    RigidTransform,
+    BaseField,
+    Fields,
+    Concatenate,
+    PixelType,
 )
 from pydrake.systems.sensors import Image as SensorImage
-from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection, AutoModelForMaskGeneration
+from transformers import (
+    AutoProcessor,
+    AutoModelForZeroShotObjectDetection,
+    AutoModelForMaskGeneration,
+)
 from manipulation.meshcat_utils import AddMeshcatTriad
 from PIL import ImageDraw, Image
 from typing import Dict, List, Optional, Tuple
@@ -17,7 +27,9 @@ import cv2
 
 def mask_to_polygon(mask: np.ndarray) -> List[List[int]]:
     # Find contours in the binary mask
-    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(
+        mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
 
     # Find the contour with the largest area
     largest_contour = max(contours, key=cv2.contourArea)
@@ -27,7 +39,10 @@ def mask_to_polygon(mask: np.ndarray) -> List[List[int]]:
 
     return polygon
 
-def polygon_to_mask(polygon: List[Tuple[int, int]], image_shape: Tuple[int, int]) -> np.ndarray:
+
+def polygon_to_mask(
+    polygon: List[Tuple[int, int]], image_shape: Tuple[int, int]
+) -> np.ndarray:
     """
     Convert a polygon to a segmentation mask.
 
@@ -50,7 +65,9 @@ def polygon_to_mask(polygon: List[Tuple[int, int]], image_shape: Tuple[int, int]
     return mask
 
 
-def refine_masks(masks: torch.BoolTensor, polygon_refinement: bool = False) -> List[np.ndarray]:
+def refine_masks(
+    masks: torch.BoolTensor, polygon_refinement: bool = False
+) -> List[np.ndarray]:
     masks = masks.cpu().float()
     masks = masks.permute(0, 2, 3, 1)
     masks = masks.mean(axis=-1)
@@ -96,17 +113,24 @@ def depth_to_pC(uv: np.ndarray, depth_img, cam_info, mask):
     return pC
 
 
-
 class MergePointClouds(LeafSystem):
-    def __init__(self, plant, basket, camera_body_indices, cameras, meshcat,
-                 object_prompt="a basket with a handle."
-                 ):
+    def __init__(
+        self,
+        plant,
+        basket,
+        camera_body_indices,
+        cameras,
+        meshcat,
+        object_prompt: str = "a basket with handle.",
+        debug: bool = False,
+    ):
         super().__init__()
         self._meshcat = meshcat
         self._plant = plant
         self._plant_context = plant.CreateDefaultContext()
 
         self.object_prompt = object_prompt
+        self.debug = debug
 
         # grounding dino
         model_id = "IDEA-Research/grounding-dino-base"
@@ -116,7 +140,7 @@ class MergePointClouds(LeafSystem):
         self.model = model
 
         # grounding dino segmentation
-        segmenter_id =  "facebook/sam-vit-base"
+        segmenter_id = "facebook/sam-vit-base"
         segmentator = AutoModelForMaskGeneration.from_pretrained(segmenter_id)
         segmentator_processor = AutoProcessor.from_pretrained(segmenter_id)
         self.segmentator = segmentator
@@ -133,28 +157,28 @@ class MergePointClouds(LeafSystem):
 
         for i in range(self._num_cameras):
             point_cloud_port = f"camera{i}_point_cloud"
-            self._camera_ports.append(self.DeclareAbstractInputPort(
-                point_cloud_port, mug_point_cloud).get_index())
-            
+            self._camera_ports.append(
+                self.DeclareAbstractInputPort(
+                    point_cloud_port, mug_point_cloud
+                ).get_index()
+            )
+
             rgb_port = f"camera{i}_rgb_image"
             self._camera_rgb_ports.append(
-                self.DeclareAbstractInputPort(
-                    rgb_port, rgb_image
-                ).get_index()
+                self.DeclareAbstractInputPort(rgb_port, rgb_image).get_index()
             )
 
             depth_port = f"camera{i}_depth_image"
             self._camera_depth_ports.append(
-                self.DeclareAbstractInputPort(
-                    depth_port, depth_image
-                ).get_index()
+                self.DeclareAbstractInputPort(depth_port, depth_image).get_index()
             )
-            
-            
+
         self._cameras = cameras
 
-        for i in range(self._num_cameras):            
-            X_WC = plant.EvalBodyPoseInWorld(self._plant_context, plant.get_body(camera_body_indices[i]))
+        for i in range(self._num_cameras):
+            X_WC = plant.EvalBodyPoseInWorld(
+                self._plant_context, plant.get_body(camera_body_indices[i])
+            )
             AddMeshcatTriad(meshcat, f"camera{i}", length=0.1, radius=0.005, X_PT=X_WC)
 
 
@@ -189,11 +213,11 @@ class MergePointClouds(LeafSystem):
         # meshcat.SetLineSegments(
         #     "/cropping_box",  self._crop_lower[:, None],
         #     self._crop_upper[:, None])
-        
+
         self._camera_body_indices = camera_body_indices
-    
+
     def GetPointCloud(self, context, output):
-        if hasattr(self, '_cached_point_cloud'):
+        if hasattr(self, "_cached_point_cloud"):
             output.set_value(self._cached_point_cloud)
             return
 
@@ -201,21 +225,22 @@ class MergePointClouds(LeafSystem):
         #     self.GetInputPort("body_poses").get_index()
         # ).Eval(context)
 
-        prompt = "a basket with handle."
         ps = []
+        detection_imgs = []
+        mask_imgs = []
 
         for i in range(self._num_cameras):
             # get rgb and depth image from camera
             rgb_port = self._camera_rgb_ports[i]
-            rgb_image = self.get_input_port(
-                rgb_port).Eval(context).data
+            rgb_image = self.get_input_port(rgb_port).Eval(context).data
             rgb_image = Image.fromarray(rgb_image).convert("RGB")
             depth_port = self._camera_depth_ports[i]
-            depth_image = self.get_input_port(
-                depth_port).Eval(context).data.squeeze()
-            
+            depth_image = self.get_input_port(depth_port).Eval(context).data.squeeze()
+
             # get bounding box from grounding dino
-            inputs = self.processor(images=rgb_image, text=prompt, return_tensors="pt")
+            inputs = self.processor(
+                images=rgb_image, text=self.object_prompt, return_tensors="pt"
+            )
             with torch.no_grad():
                 outputs = self.model(**inputs)
 
@@ -224,21 +249,28 @@ class MergePointClouds(LeafSystem):
                 inputs.input_ids,
                 box_threshold=0.3,
                 text_threshold=0.3,
-                target_sizes=[rgb_image.size[::-1]]
+                target_sizes=[rgb_image.size[::-1]],
             )
 
             box = results[0]["boxes"][-1]
             box_list = box.tolist()
 
+            # draw bounding box on the image
+            rgb_image_with_box = rgb_image.copy()
+            draw = ImageDraw.Draw(rgb_image_with_box)
+            draw.rectangle(box_list, outline="red", width=2)
+
             # get segmentation mask of the object
             with torch.inference_mode():
-                inputs = self.segmentator_processor(images=rgb_image, input_boxes=[[box_list]], return_tensors="pt")
+                inputs = self.segmentator_processor(
+                    images=rgb_image, input_boxes=[[box_list]], return_tensors="pt"
+                )
                 outputs = self.segmentator(**inputs)
 
             masks = self.segmentator_processor.post_process_masks(
                 masks=outputs.pred_masks,
                 original_sizes=inputs.original_sizes,
-                reshaped_input_sizes=inputs.reshaped_input_sizes
+                reshaped_input_sizes=inputs.reshaped_input_sizes,
             )[0]
 
             masks = refine_masks(masks, polygon_refinement=True)
@@ -249,10 +281,40 @@ class MergePointClouds(LeafSystem):
             mask = masks[0]
             pC = depth_to_pC(uv, depth_image, camera_info, mask=mask)
 
+            mask_img = Image.fromarray(mask, mode="L")
+
+            detection_imgs.append(rgb_image_with_box)
+            mask_imgs.append(mask_img)
+
             # convert pC to world frame
-            X_WC = self._plant.EvalBodyPoseInWorld(self._plant_context, self._plant.get_body(self._camera_body_indices[i]))
+            X_WC = self._plant.EvalBodyPoseInWorld(
+                self._plant_context, self._plant.get_body(self._camera_body_indices[i])
+            )
             pW = X_WC.multiply(pC.T).T
             ps.append(pW)
+
+        # create 2 x 3 grid of images
+        if self.debug:
+            import matplotlib.pyplot as plt
+
+            imgs_grid = detection_imgs + mask_imgs
+
+            # Create a figure with a 2x3 grid
+            fig, axes = plt.subplots(
+                2, self._num_cameras, figsize=(15, 10)
+            )  # Adjust figsize as needed
+
+            for i, ax in enumerate(axes.flat):  # Flatten the 2D grid for iteration
+                if i < len(imgs_grid):
+                    ax.imshow(imgs_grid[i])
+
+            # Save the resulting grid image
+            output_path = "debug_vis.png"
+            plt.tight_layout()
+            plt.savefig(output_path, bbox_inches="tight")
+            plt.close(fig)
+
+            print(f"Grid saved as {output_path}")
 
         # get bounding box of the merged point cloud
         ps = np.concatenate(ps, axis=0)
@@ -263,17 +325,24 @@ class MergePointClouds(LeafSystem):
         print("upper: ", upper)
 
         AddMeshcatTriad(
-            self._meshcat, path=f"lower", length=0.1, radius=0.005, X_PT=RigidTransform(p=lower))
+            self._meshcat,
+            path=f"lower",
+            length=0.1,
+            radius=0.005,
+            X_PT=RigidTransform(p=lower),
+        )
         AddMeshcatTriad(
-            self._meshcat, path=f"upper", length=0.1, radius=0.005, X_PT=RigidTransform(p=upper))
-
+            self._meshcat,
+            path=f"upper",
+            length=0.1,
+            radius=0.005,
+            X_PT=RigidTransform(p=upper),
+        )
 
         pcd = []
         for i in range(self._num_cameras):
             port = self._camera_ports[i]
-            cloud = self.get_input_port(
-                port).Eval(context)
-            
+            cloud = self.get_input_port(port).Eval(context)
 
             # pcd.append(cloud.Crop(self._crop_lower, self._crop_upper))
             pcd.append(cloud.Crop(lower, upper))
@@ -281,7 +350,9 @@ class MergePointClouds(LeafSystem):
 
             # Flip normals toward camera
             # X_WC = body_poses[self._camera_body_indices[i]]
-            X_WC = self._plant.EvalBodyPoseInWorld(self._plant_context, self._plant.get_body(self._camera_body_indices[i]))
+            X_WC = self._plant.EvalBodyPoseInWorld(
+                self._plant_context, self._plant.get_body(self._camera_body_indices[i])
+            )
             pcd[i].FlipNormalsTowardPoint(X_WC.translation())
 
         merged_pcd = Concatenate(pcd)
@@ -291,6 +362,3 @@ class MergePointClouds(LeafSystem):
         # Cache the computed point cloud
         self._cached_point_cloud = down_sampled_pcd
         output.set_value(down_sampled_pcd)
-        
-
-    
