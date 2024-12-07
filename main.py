@@ -37,7 +37,7 @@ class NoDiffIKWarnings(logging.Filter):
 def pouring_demo(cfg: DictConfig) -> bool:
     meshcat = StartMeshcat()
 
-    diagram, planner_system, visualizer = BuildPouringDiagram(meshcat, cfg)
+    diagram, planner_system, _ = BuildPouringDiagram(meshcat, cfg)
 
     # debug: visualize merged point cloud
     # merge_point_clouds = diagram.GetSubsystemByName('merge_point_clouds')
@@ -82,9 +82,9 @@ if __name__ == '__main__':
     logging.getLogger('drake').addFilter(NoDiffIKWarnings())
 
     # for reproducability. When testing grasp poses of the NDF disable.
-    torch.manual_seed(86)
-    np.random.seed(48)
-    random.seed(72)
+    # torch.manual_seed(10)
+    # np.random.seed(48)
+    # random.seed(72)
 
     pouring_demo()
 

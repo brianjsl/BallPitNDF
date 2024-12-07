@@ -99,7 +99,6 @@ def depth_to_pC(uv: np.ndarray, depth_img, cam_info, mask):
 
 class MergePointClouds(LeafSystem):
     def __init__(self, plant, basket, camera_body_indices, cameras, meshcat,
-                 
                  object_prompt="a basket with a handle."
                  ):
         super().__init__()
@@ -159,8 +158,8 @@ class MergePointClouds(LeafSystem):
             AddMeshcatTriad(meshcat, f"camera{i}", length=0.1, radius=0.005, X_PT=X_WC)
 
 
-        self.DeclareAbstractInputPort(
-            "body_poses", AbstractValue.Make([RigidTransform()]))
+        # self.DeclareAbstractInputPort(
+        #     "body_poses", AbstractValue.Make([RigidTransform()]))
 
         self.DeclareAbstractOutputPort(
             "point_cloud",
@@ -168,17 +167,15 @@ class MergePointClouds(LeafSystem):
                 BaseField.kXYZs | BaseField.kRGBs | BaseField.kNormals))),
             self.GetPointCloud, 
             prerequisites_of_calc= set(
-                [
-                self.input_port_ticket(self.GetInputPort("body_poses").get_index()),
-            ] + 
             [
                 self.input_port_ticket(port) for port in self._camera_ports
             ])
-            )
+        )
 
-        context = plant.CreateDefaultContext()
-        basket_body = plant.GetBodyByName('basket_body_link', basket)
-        X_B = plant.EvalBodyPoseInWorld(context, basket_body)
+        # cheat ports (debugging)
+        # context = plant.CreateDefaultContext()
+        # basket_body = plant.GetBodyByName('basket_body_link', basket)
+        # X_B = plant.EvalBodyPoseInWorld(context, basket_body)
         # margin = 0.001 
 
         # a = X_B.multiply([-0.1+margin, -0.2+margin, -0.2+margin])
@@ -200,9 +197,9 @@ class MergePointClouds(LeafSystem):
             output.set_value(self._cached_point_cloud)
             return
 
-        body_poses = self.get_input_port(
-            self.GetInputPort("body_poses").get_index()
-        ).Eval(context)
+        # body_poses = self.get_input_port(
+        #     self.GetInputPort("body_poses").get_index()
+        # ).Eval(context)
 
         prompt = "a basket with handle."
         ps = []

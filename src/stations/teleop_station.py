@@ -29,7 +29,30 @@ from omegaconf import DictConfig
 import random
 from hydra.utils import get_original_cwd
 
-def get_directives(directives_cfg: DictConfig, object='wooden_basket_big_handle', obj_name='basket', object_id=None, link_name='basket_body_link') -> tuple[str, str]:
+OBJECT_CLASSES = ['mug', 'basket', 'bottle', 'bowl']
+object_params = {
+    'mug': {
+        'folder_name': 'mug',
+        'obj_name': 'mug',
+        'link_name': 'mug_body_link'
+    },
+    'basket': {
+        'folder_name': 'wooden_basket_big_handle',
+        'obj_name': 'wooden_basket',
+        'link_name': 'basket_body_link'
+    }, 
+    'bowl': {
+        'folder_name': 'bowl',
+        'obj_name': 'bowl',
+        'link_name': 'bowl_body_link'
+    }
+}
+
+def get_directives(directives_cfg: DictConfig) -> tuple[str, str]:
+    object = directives_cfg['object']
+
+    assert object in OBJECT_CLASSES, f"Object {object} unknown."
+
     # description of robot
     robot_directives = """
 directives:
@@ -70,12 +93,12 @@ directives:
         X_PC:
             translation: [0, 0, -0.05]
     - add_model:
-        name: {obj_name}
-        file: file://{get_original_cwd()}/src/assets/{object}/{(object+str(object_id)) if object_id is not None else 'wooden_basket'}.sdf
+        name: {object}
+        file: file://{get_original_cwd()}/src/assets/{(object_params[object]['folder_name'])}/{object_params[object]['obj_name']}.sdf
         default_free_body_pose:
-            {link_name}:
-                translation: [0.4, 0, 0]
-                rotation: !Rpy {{ deg: [90, 0, 0]}}
+            {object_params[object]['link_name']}:
+                translation: [0.4, 0, {0.1}]
+                rotation: !Rpy {{ deg: [90, 0, {-90* random.random()}]}}
 
     - add_frame:
         name: camera0_origin
@@ -152,7 +175,7 @@ directives:
         file: file://{get_original_cwd()}/src/assets/sphere/sphere_small.sdf
         default_free_body_pose:
             sphere_body_link:
-                translation: [0.4, 0, 0.15]
+                translation: [0.4, 0, 0.3]
 """
     return robot_directives, env_directives
 

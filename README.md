@@ -42,9 +42,9 @@ A brief documentation of the major files in our code:
 ### Perception
 
 * `merge_point_clouds.py`: Introuces the `MergePointClouds` system which combines the point clouds of a station 
-into a single point cloud. For now it only concatenates and assumes calibrated point clouds (TODO: add camera
-calibration for uncalibrated cameras using ICP)
-* `segment.py` (TODO: Segment Anything module that segments/masks the point cloud for future processing)
+into a single point cloud. The crop is done without cheat ports using a combination of the 
+!(GroundingDINO)[https://github.com/IDEA-Research/GroundingDINO] algorithms and the 
+!(Segment Anything)[https://github.com/facebookresearch/segment-anything] algorithms for segmentation. 
 
 ### Grasping
 

@@ -44,7 +44,7 @@ ARM_POSITIONS = 7
 HAND_POSITIONS = 2
 
 class Planner(LeafSystem):
-    def __init__(self, meshcat: Meshcat, plant: MultibodyPlant):
+    def __init__(self, meshcat: Meshcat, plant: MultibodyPlant, object: str):
         super().__init__()
 
         #debugging
@@ -61,8 +61,8 @@ class Planner(LeafSystem):
 
         # Input port for the LNDF grasp pose
         # Format: pose, query points
-        self._basket_grasp_index = self.DeclareAbstractInputPort(
-            'basket_grasp', AbstractValue.Make((RigidTransform(), np.ndarray(0)))
+        self._obj_grasp_index = self.DeclareAbstractInputPort(
+            'obj_grasp', AbstractValue.Make((RigidTransform(), np.ndarray(0)))
         ).get_index()
 
         # where to pour
@@ -144,6 +144,7 @@ class Planner(LeafSystem):
         )
     
         self._is_done = False
+        self.object = object
 
     def Update(self, context, state):
         mode = state.get_mutable_abstract_state(int(self._mode_index))
@@ -208,11 +209,14 @@ class Planner(LeafSystem):
     def PlanGrasp(self, context, state):
         print('PLANNING GRASP')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        grasp_pose, final_query_points = self.get_input_port(self._basket_grasp_index).Eval(context)
+        grasp_pose, final_query_points = self.get_input_port(self._obj_grasp_index).Eval(context)
         draw_query_pts(self._meshcat, final_query_points)
 
         # TODO: Add clearance pose
-        clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.5]) 
+        if self.object == 'basket':
+            clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.5]) 
+        else:
+            clearance_pose = RigidTransform(RollPitchYaw(np.pi, -np.pi/2, -np.pi/2), [0.5, -0.2, 0.5])
         frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), False)
 
         #debugging: keep track of trajectory frames
@@ -240,11 +244,22 @@ class Planner(LeafSystem):
 
         # So we don't crash into the ballpit
         intermediate_pos = self._bin_pos + np.array([0.5, 0, 0.5])
-        intermediate_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), intermediate_pos)
+        
+        if self.object == 'basket':
+            intermediate_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), intermediate_pos)
+        else:
+            intermediate_pose = RigidTransform(RollPitchYaw(np.pi/2, -np.pi/2, -np.pi/2), intermediate_pos)
         
         # have final pos be above the bin
-        final_pos = self._bin_pos + np.array([0.0, 0, 0.5])
-        final_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), final_pos)
+        if self.object == 'basket':
+            final_pos = self._bin_pos + np.array([0.0, 0, 0.5])
+        else:
+            final_pos = self._bin_pos + np.array([0.2, 0, 0.5])
+
+        if self.object == 'basket':
+            final_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), final_pos)
+        else:
+            final_pose = RigidTransform(RollPitchYaw(np.pi/2, -np.pi/2, -np.pi/2), final_pos)
 
         X_G_traj = PiecewisePose.MakeLinear([context.get_time(), context.get_time()+3, context.get_time() + 6], [initial_pose, intermediate_pose, final_pose])
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
@@ -262,8 +277,13 @@ class Planner(LeafSystem):
     def Pour(self, context, state):
         print('POURING')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        rot_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0.5*np.pi, 0, 0)), [0, 0, 0]) 
-        inter_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), rot_pose.translation())
+
+        if self.object == 'basket':
+            rot_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0.5*np.pi, 0, 0)), [0, 0, 0]) 
+            inter_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), rot_pose.translation())
+        else:
+            rot_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0, -0.5*np.pi, 0)), [0, 0, 0]) 
+            inter_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi/2, -np.pi/2, -np.pi/2)), rot_pose.translation())
 
         X_G_traj = PiecewisePose.MakeLinear([context.get_time(), 
                                              context.get_time() + 3, context.get_time() + 10, context.get_time()+13,
@@ -282,7 +302,11 @@ class Planner(LeafSystem):
     def UnPour(self, context, state):
         print('UNPOURING')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        final_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), [0, -0.5, 0.6])
+
+        if self.object == 'basket':
+            final_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), [0, -0.5, 0.6])
+        else:
+            final_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi/2, -np.pi/2, -np.pi/2)), [0, -0.5, 0.6])
 
         X_G_traj = PiecewisePose.MakeLinear([context.get_time(),
                                              context.get_time() + 3], [initial_pose, final_pose])
@@ -298,10 +322,18 @@ class Planner(LeafSystem):
     def ReturnBasket(self, context, state):
         print('RETURNING BASKET')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
-        grasp_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/1), [0.5, 0, 0.9])
+
+        if self.object == 'basket':
+            grasp_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, 0, 0.9])
+        else:
+            grasp_pose = RigidTransform(RollPitchYaw(np.pi, -np.pi/2, -np.pi/2), [0.5, 0, 0.9])
 
         # TODO: FIX clearance pose
-        clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.9]) 
+
+        if self.object == 'basket':
+            clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.9]) 
+        else:
+            clearance_pose = RigidTransform(RollPitchYaw(np.pi, -np.pi/2, -np.pi/2), [0.5, -0.2, 0.9]) 
 
         frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), True)
 

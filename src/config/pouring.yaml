@@ -1,5 +1,6 @@
 directives:
   num_balls: 1
+  object: bowl
 max_time: -1
 lndf:
   # pc_sample_pts: 2000
@@ -29,3 +30,5 @@ lndf:
       sigmoid: False  # Use sigmoid activation on last layer
       acts: last  # Return last activations of occupancy network
     ckpt: lndf_weights.pth
+SAM:
+  object_prompt: a bowl with a handle

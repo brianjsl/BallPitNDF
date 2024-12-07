@@ -32,6 +32,8 @@ class NoDiffIKWarnings(logging.Filter):
 def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Diagram, ]:
     directives_config = cfg['directives']
     lndf_config = cfg['lndf']
+    SAM_config = cfg['SAM']
+    object = directives_config['object']
 
     builder = DiagramBuilder()
 
@@ -60,7 +62,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         "merge_point_clouds",
         MergePointClouds(
             plant,
-            plant.GetModelInstanceByName("basket"),
+            plant.GetModelInstanceByName(object),
 
             # only above view cameras to get partial point clouds
             camera_body_indices=[
@@ -71,6 +73,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
             ],
             cameras=cameras,
             meshcat=meshcat,
+            object_prompt=SAM_config['object_prompt'],
         ),
     )
 
@@ -101,13 +104,14 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
         )
 
 
-    builder.Connect(
-        panda_station.GetOutputPort("body_poses"),
-        merge_point_clouds.GetInputPort("body_poses"),
-    )
+    # remove cheat ports
+    # builder.Connect(
+    #     panda_station.GetOutputPort("body_poses"),
+    #     merge_point_clouds.GetInputPort("body_poses"),
+    # )
 
     # Planner
-    planner_system = Planner(meshcat, plant)
+    planner_system = Planner(meshcat, plant, directives_config['object'])
     planner = builder.AddSystem(planner_system)
     builder.Connect(
         panda_station.GetOutputPort("body_poses"),
@@ -115,7 +119,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
     )
     builder.Connect(
         grasper.GetOutputPort("grasp_pose"),
-        planner.GetInputPort("basket_grasp")
+        planner.GetInputPort("obj_grasp")
     )
 
     #TODO: Fix Port names
