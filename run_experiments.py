@@ -35,6 +35,7 @@ from hydra.utils import get_original_cwd
 from src.modules.kinematics import Planner, AddPandaDifferentialIK
 import torch
 from src.stations.setup_diagram import BuildPouringDiagram
+from tqdm import tqdm
 
 
 class NoDiffIKWarnings(logging.Filter):
@@ -46,8 +47,9 @@ class NoDiffIKWarnings(logging.Filter):
 def run_pouring_experiments(cfg: DictConfig) -> bool:
     assert cfg.num_runs > 0
 
-    num_success = 0
-    for i in range(cfg.num_runs):
+    num_success_grasp = 0
+    num_success_pour = 0
+    for i in tqdm(range(cfg.num_runs), position=0):
         # run simulation for `duration`
         diagram, context = pouring_demo(cfg, cfg.duration)
 
@@ -55,6 +57,14 @@ def run_pouring_experiments(cfg: DictConfig) -> bool:
         station = diagram.GetSubsystemByName("PandaManipulationStation")
         plant = station.GetSubsystemByName("plant")
         plant_context = plant.GetMyContextFromRoot(context)
+
+        # get position of basket in world frame
+        basket_body = plant.GetBodyByName("basket_body_link")
+        basket_pose = plant.EvalBodyPoseInWorld(plant_context, basket_body)
+        basket_z = basket_pose.translation()[2]
+
+        if basket_z >= 0:
+            num_success_grasp += 1
 
         # get position of ball in world frame
         ball_body = plant.GetBodyByName("sphere_body_link")
@@ -73,9 +83,6 @@ def run_pouring_experiments(cfg: DictConfig) -> bool:
 
         # translate ball position to ball pit frame
         X_Ballpit_Ball = X_WB.inverse().multiply(ball_position)
-        print("upper_left_local: ", upper_left_local)
-        print("lower_right_local: ", lower_right_local)
-        print("X_Ballpit_Ball: ", X_Ballpit_Ball)
 
         # check if ball in ball pit
         in_ballpit = (
@@ -84,16 +91,20 @@ def run_pouring_experiments(cfg: DictConfig) -> bool:
         )
 
         if in_ballpit:
-            num_success += 1
+            num_success_pour += 1
 
-        print(f"[Run {i}] Ball in ball pit: {in_ballpit}")
+        tqdm.write(f"[Run {i}] Ball in ball pit: {in_ballpit}")
 
-    accuracy = num_success / cfg.num_runs
-    print(f"Accuracy: {accuracy}")
+    pour_accuracy = num_success_pour / cfg.num_runs
+    grasp_accuracy = num_success_grasp / cfg.num_runs
+
+    print(f"Pour Accuracy: {pour_accuracy}")
+    print(f"Grasp Accuracy: {grasp_accuracy}")
 
     # save to txt file
     with open("accuracy.txt", "w") as f:
-        f.write(f"Accuracy: {accuracy}")
+        f.write(f"Pour Accuracy: {pour_accuracy}\n")
+        f.write(f"Grasp Accuracy: {grasp_accuracy}\n")
 
 
 def pouring_demo(cfg: DictConfig, duration: int) -> bool:
