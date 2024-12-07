@@ -47,11 +47,13 @@ class NoDiffIKWarnings(logging.Filter):
 def run_pouring_experiments(cfg: DictConfig) -> bool:
     assert cfg.num_runs > 0
 
+    meshcat = StartMeshcat()
+
     num_success_grasp = 0
     num_success_pour = 0
     for i in tqdm(range(cfg.num_runs), position=0):
         # run simulation for `duration`
-        diagram, context = pouring_demo(cfg, cfg.duration)
+        diagram, context, meshcat = pouring_demo(cfg, meshcat, cfg.duration)
 
         # get plant
         station = diagram.GetSubsystemByName("PandaManipulationStation")
@@ -106,24 +108,24 @@ def run_pouring_experiments(cfg: DictConfig) -> bool:
         f.write(f"Pour Accuracy: {pour_accuracy}\n")
         f.write(f"Grasp Accuracy: {grasp_accuracy}\n")
 
+    meshcat.Delete()
 
-def pouring_demo(cfg: DictConfig, duration: int) -> bool:
-    meshcat = StartMeshcat()
 
+def pouring_demo(cfg: DictConfig, meshcat, duration: int) -> bool:
     diagram, _, _ = BuildPouringDiagram(meshcat, cfg)
     context = diagram.CreateDefaultContext()
     simulator = Simulator(diagram, context)
     simulator.AdvanceTo(duration)
 
-    return diagram, context
+    return diagram, context, meshcat
 
 
 if __name__ == "__main__":
     logging.getLogger("drake").addFilter(NoDiffIKWarnings())
 
     # for reproducability. When testing grasp poses of the NDF disable.
-    torch.manual_seed(86)
-    np.random.seed(48)
-    random.seed(72)
+    # torch.manual_seed(86)
+    # np.random.seed(48)
+    # random.seed(72)
 
     run_pouring_experiments()
