@@ -81,6 +81,8 @@ directives:
             rotation: !Rpy { deg: [0, 0, 0] }
 """
 
+    rot = -90* random.random()
+
     # description of objects in env
     env_directives = f"""
 directives:
@@ -98,7 +100,7 @@ directives:
         default_free_body_pose:
             {object_params[object]['link_name']}:
                 translation: [0.4, 0, {0.1}]
-                rotation: !Rpy {{ deg: [90, 0, {-90* random.random()}]}}
+                rotation: !Rpy {{ deg: [90, 0, {rot}]}}
 
     - add_frame:
         name: camera0_origin
@@ -175,7 +177,7 @@ directives:
         file: file://{get_original_cwd()}/src/assets/sphere/sphere_small.sdf
         default_free_body_pose:
             sphere_body_link:
-                translation: [0.4, 0, 0.3]
+                translation: [0.4, 0, 0.2]
 """
     return robot_directives, env_directives
 

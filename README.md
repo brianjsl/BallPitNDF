@@ -28,6 +28,11 @@ Please run `source scripts/setup.sh`.
 
 To run the simulation run `python -m main`.
 
+## Running Experiments
+
+To run the experiment run `python -m run_experiments +num_runs=${NUM_RUNS} +duration=${DURATION}` replacing `${NUM_RUNS}` with the 
+number of runs you will run (we use 100 in our paper) and `${DURATION}` for the amount of time to be used (we typicall use 35 seconds).
+
 ## Documentation
 
 To get pretrained weights for evaluation, run `sh scripts/get_lndf_sample.obj` and `sh scripts/get_weights.sh`.

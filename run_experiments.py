@@ -110,7 +110,7 @@ def run_pouring_experiments(cfg: DictConfig) -> bool:
 def pouring_demo(cfg: DictConfig, duration: int) -> bool:
     meshcat = StartMeshcat()
 
-    diagram, planner_system, visualizer = BuildPouringDiagram(meshcat, cfg)
+    diagram, _, _ = BuildPouringDiagram(meshcat, cfg)
     context = diagram.CreateDefaultContext()
     simulator = Simulator(diagram, context)
     simulator.AdvanceTo(duration)
