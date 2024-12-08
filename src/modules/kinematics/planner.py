@@ -150,7 +150,7 @@ class Planner(LeafSystem):
         mode = state.get_mutable_abstract_state(int(self._mode_index))
         mode_value = mode.get_value()
         current_time = context.get_time()
-        print(f't: {current_time:.1f}, mode: {mode_value}')
+        # print(f't: {current_time:.1f}, mode: {mode_value}')
 
         # Store trajectories and times in local variables
         traj_X_G = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
@@ -212,8 +212,10 @@ class Planner(LeafSystem):
         grasp_pose, final_query_points = self.get_input_port(self._obj_grasp_index).Eval(context)
 
         if self.object == 'mug':
-            print('Rotating Grasp')
-            grasp_pose = grasp_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0, 0, np.pi)))
+           print('Rotating Grasp')
+           print(f'grasp pose x: {grasp_pose.rotation().ToRollPitchYaw().roll_angle()}')
+           if grasp_pose.rotation().ToRollPitchYaw().roll_angle() >= np.pi:
+                grasp_pose = grasp_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0, 0, np.pi)))
 
         draw_query_pts(self._meshcat, final_query_points)
 

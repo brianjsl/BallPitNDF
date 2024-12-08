@@ -117,8 +117,8 @@ class LNDFGrasper(LeafSystem):
 
         point_cloud_npy = point_cloud.xyzs().T * self._scale_factor
         # point_cloud_npy = point_cloud_npy[np.random.choice(point_cloud_npy.shape[0], self.pc_sample_pts, replace=True), :]
-        fig = px.scatter_3d(x = point_cloud_npy[:, 0], y=point_cloud_npy[:, 1], z=point_cloud_npy[:, 2])
-        fig.show()
+        # fig = px.scatter_3d(x = point_cloud_npy[:, 0], y=point_cloud_npy[:, 1], z=point_cloud_npy[:, 2])
+        # fig.show()
         pose_mats, best_idx, _ = self.local_ndf.get_pose(
             point_cloud_npy, self.local_ndf.viz_path
         )

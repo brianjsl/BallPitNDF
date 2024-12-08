@@ -74,7 +74,7 @@ def BuildPouringDiagram(meshcat: Meshcat, cfg: DictConfig) -> tuple[Diagram, Dia
             cameras=cameras,
             meshcat=meshcat,
             object_prompt=SAM_config['object_prompt'],
-            debug=True
+            debug=False
         ),
     )
 
