@@ -23,6 +23,9 @@ from PIL import ImageDraw, Image
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import cv2
+import matplotlib.pyplot as plt
+from scipy.spatial import KDTree
+import numpy as np
 
 
 def mask_to_polygon(mask: np.ndarray) -> List[List[int]]:
@@ -295,7 +298,6 @@ class MergePointClouds(LeafSystem):
 
         # create 2 x 3 grid of images
         if self.debug:
-            import matplotlib.pyplot as plt
 
             imgs_grid = detection_imgs + mask_imgs
 
@@ -318,6 +320,9 @@ class MergePointClouds(LeafSystem):
 
         # get bounding box of the merged point cloud
         ps = np.concatenate(ps, axis=0)
+        ps = self.reject_outliers(ps, k=10, std_threshold=1.5)  # Adjust k and std_threshold as needed
+
+
         lower = np.min(ps, axis=0)
         upper = np.max(ps, axis=0)
 
@@ -362,3 +367,52 @@ class MergePointClouds(LeafSystem):
         # Cache the computed point cloud
         self._cached_point_cloud = down_sampled_pcd
         output.set_value(down_sampled_pcd)
+
+    def reject_outliers(
+        self, 
+        points: np.ndarray, 
+        k: int = 10, 
+        std_threshold: float = 1.0
+    ) -> np.ndarray:
+        """
+        Remove outliers from a set of 3D points using Statistical Outlier Removal.
+
+        Args:
+            points (np.ndarray): Input point cloud of shape (N, 3).
+            k (int): Number of nearest neighbors to consider for each point.
+            std_threshold (float): Standard deviation multiplier for the distance threshold.
+
+        Returns:
+            np.ndarray: Filtered point cloud with outliers removed.
+        """
+        if points.shape[0] == 0:
+            return points  # Return empty array if no points are provided
+
+        # Build a KD-tree for efficient neighbor search
+        tree = KDTree(points)
+        
+        # Query the k+1 nearest neighbors for each point (including the point itself)
+        distances, _ = tree.query(points, k=k+1)
+        
+        # Exclude the first column which is the distance to itself (zero)
+        mean_distances = np.mean(distances[:, 1:], axis=1)
+        
+        # Compute global statistics
+        global_mean = np.mean(mean_distances)
+        global_std = np.std(mean_distances)
+        
+        # Determine the distance threshold
+        distance_threshold = global_mean + std_threshold * global_std
+        
+        # Identify inliers
+        inlier_mask = mean_distances <= distance_threshold
+        
+        # Filter the points
+        filtered_points = points[inlier_mask]
+        
+        if self.debug:
+            print(f"Outlier Removal: {points.shape[0] - filtered_points.shape[0]} outliers removed.")
+            print(f"Distance Threshold: {distance_threshold:.4f}")
+            print(f"Mean Distance: {global_mean:.4f}, Std Dev: {global_std:.4f}")
+        
+        return filtered_points

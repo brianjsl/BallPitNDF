@@ -81,7 +81,10 @@ directives:
             rotation: !Rpy { deg: [0, 0, 0] }
 """
 
-    rot = -90* random.random()
+    if object == 'bowl':
+        rot = 15* random.random() + 180
+    else:
+        rot = -90 * random.random()
 
     # description of objects in env
     env_directives = f"""
@@ -99,7 +102,7 @@ directives:
         file: file://{get_original_cwd()}/src/assets/{(object_params[object]['folder_name'])}/{object_params[object]['obj_name']}.sdf
         default_free_body_pose:
             {object_params[object]['link_name']}:
-                translation: [0.4, 0, {0.1}]
+                translation: {[0.4, -0.07, 0.32] if object == 'bowl' else [0.4, 0, 0.1]}
                 rotation: !Rpy {{ deg: [90, 0, {rot}]}}
 
     - add_frame:
@@ -177,7 +180,24 @@ directives:
         file: file://{get_original_cwd()}/src/assets/sphere/sphere_small.sdf
         default_free_body_pose:
             sphere_body_link:
-                translation: [0.4, 0, 0.2]
+                translation: {[0.4, -0.07, 0.35] if object == 'bowl' else [0.4, 0, 0.2]}
+"""
+        
+    if object == 'bowl':
+        env_directives += f"""
+    - add_frame:
+        name: table_origin
+        X_PF:
+            base_frame: world
+            rotation: !Rpy {{deg: [0.0, 0, 0.0]}}
+            translation: [.4, -0.1, 0.25]
+    - add_model:
+        name: table
+        file: file://{get_original_cwd()}/src/assets/table/table.sdf
+
+    - add_weld:
+        parent: table_origin
+        child: table::table
 """
     return robot_directives, env_directives
 

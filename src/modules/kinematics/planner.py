@@ -217,7 +217,7 @@ class Planner(LeafSystem):
             clearance_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), [0.5, -0.2, 0.5]) 
         else:
             clearance_pose = RigidTransform(RollPitchYaw(np.pi, -np.pi/2, -np.pi/2), [0.5, -0.2, 0.5])
-        frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), False)
+        frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), False, self.object)
 
         #debugging: keep track of trajectory frames
         AddMeshcatTriad(self._meshcat, 'initial', X_PT=frames['initial'][1])
@@ -256,6 +256,7 @@ class Planner(LeafSystem):
         else:
             final_pos = self._bin_pos + np.array([0.2, 0, 0.5])
 
+
         if self.object == 'basket':
             final_pose = RigidTransform(RollPitchYaw(np.pi, 0, -np.pi/2), final_pos)
         else:
@@ -282,7 +283,7 @@ class Planner(LeafSystem):
             rot_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0.5*np.pi, 0, 0)), [0, 0, 0]) 
             inter_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/2)), rot_pose.translation())
         else:
-            rot_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0, -0.5*np.pi, 0)), [0, 0, 0]) 
+            rot_pose = initial_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0, -0.75*np.pi, 0)), [0, 0, 0]) 
             inter_pose = RigidTransform(RotationMatrix(RollPitchYaw(np.pi/2, -np.pi/2, -np.pi/2)), rot_pose.translation())
 
         X_G_traj = PiecewisePose.MakeLinear([context.get_time(), 
@@ -335,7 +336,7 @@ class Planner(LeafSystem):
         else:
             clearance_pose = RigidTransform(RollPitchYaw(np.pi, -np.pi/2, -np.pi/2), [0.5, -0.2, 0.9]) 
 
-        frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), True)
+        frames = MakeGraspFrames(initial_pose, grasp_pose, clearance_pose, context.get_time(), True, self.object)
 
         #debugging: keep track of trajectory frames
         AddMeshcatTriad(self._meshcat, 'returning initial', X_PT=frames['initial'][1])

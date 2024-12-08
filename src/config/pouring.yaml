@@ -1,6 +1,6 @@
 directives:
   num_balls: 1
-  object: basket
+  object: mug
 max_time: -1
 lndf:
   # pc_sample_pts: 2000
@@ -31,4 +31,4 @@ lndf:
       acts: last  # Return last activations of occupancy network
     ckpt: lndf_weights.pth
 SAM:
-  object_prompt: a basket with a handle
+  object_prompt: a coffee mug with a handle

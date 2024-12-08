@@ -1,10 +1,10 @@
 import numpy as np
 from pydrake.all import (AngleAxis, PiecewisePolynomial, PiecewisePose,
-                         RigidTransform, RotationMatrix)
+                         RigidTransform, RotationMatrix, RollPitchYaw)
 from typing import (Tuple, Dict)
 
 def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, clearance_pose: RigidTransform,
-                    t0: float, returning: False) -> Dict[str, Tuple[float,RigidTransform, bool]]:
+                    t0: float, returning: False, object:str) -> Dict[str, Tuple[float,RigidTransform, bool]]:
     """
     Generates a sequence of keypoint poses for a grasp trajectory.
     Inspired by https://github.com/RussTedrake/manipulation/blob/187576150412cd4f7bb1aac540f29d6cfdc76600/manipulation/pick.py#L7:
@@ -25,23 +25,31 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
 
     frames = {}
 
-    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.15]) # For panda z-axis is the normal
+    X_G_grasp_pregrasp = RigidTransform([0, 0, -0.1]) # For panda z-axis is the normal
 
     pregrasp_pose = grasp_pose @ X_G_grasp_pregrasp
 
     # Initial to prepare: interpolate halfway orientation by halving the angle
     X_GinitialGpregrasp = initial_pose.inverse() @ pregrasp_pose
     angle_axis = X_GinitialGpregrasp.rotation().ToAngleAxis()
+
+    
     X_GinitialGprepare = RigidTransform(
         AngleAxis(angle = angle_axis.angle() / 2.0, axis=angle_axis.axis()),
         X_GinitialGpregrasp.translation() / 2.0
     )
-    prepare_pose = initial_pose @ X_GinitialGprepare 
+    if object == 'bowl':
+        prepare_pose = RigidTransform(RollPitchYaw(np.pi, -np.pi/2, -np.pi/2), pregrasp_pose.translation() + np.array([0, 0, 0.3]))
+    else:
+        prepare_pose = initial_pose @ X_GinitialGprepare 
 
     prepare_time = 4.0 * np.linalg.norm(X_GinitialGprepare.translation())
     clearance_time = 5.0 * np.linalg.norm(pregrasp_pose.translation() - clearance_pose.translation())
 
-    postgrasp_pose = pregrasp_pose
+    if object == 'bowl':
+        postgrasp_pose = RigidTransform(grasp_pose.rotation(), grasp_pose.translation() + np.array([0, 0, 0.2]))
+    else:
+        postgrasp_pose = pregrasp_pose
 
     frames = {
         'initial': (t0, initial_pose, not returning),
