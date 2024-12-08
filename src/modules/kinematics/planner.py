@@ -210,6 +210,11 @@ class Planner(LeafSystem):
         print('PLANNING GRASP')
         initial_pose = self.get_input_port(self._body_poses_index).Eval(context)[int(self._gripper_body_index)]
         grasp_pose, final_query_points = self.get_input_port(self._obj_grasp_index).Eval(context)
+
+        if self.object == 'mug':
+            print('Rotating Grasp')
+            grasp_pose = grasp_pose @ RigidTransform(RotationMatrix(RollPitchYaw(0, 0, np.pi)))
+
         draw_query_pts(self._meshcat, final_query_points)
 
         # TODO: Add clearance pose

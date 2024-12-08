@@ -38,7 +38,7 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
         AngleAxis(angle = angle_axis.angle() / 2.0, axis=angle_axis.axis()),
         X_GinitialGpregrasp.translation() / 2.0
     )
-    if object == 'bowl':
+    if object == 'bowl' or 'mug':
         prepare_pose = RigidTransform(RollPitchYaw(np.pi, -np.pi/2, -np.pi/2), pregrasp_pose.translation() + np.array([0, 0, 0.3]))
     else:
         prepare_pose = initial_pose @ X_GinitialGprepare 
@@ -46,7 +46,7 @@ def MakeGraspFrames(initial_pose: RigidTransform, grasp_pose: RigidTransform, cl
     prepare_time = 4.0 * np.linalg.norm(X_GinitialGprepare.translation())
     clearance_time = 5.0 * np.linalg.norm(pregrasp_pose.translation() - clearance_pose.translation())
 
-    if object == 'bowl':
+    if object == 'bowl' or 'mug':
         postgrasp_pose = RigidTransform(grasp_pose.rotation(), grasp_pose.translation() + np.array([0, 0, 0.2]))
     else:
         postgrasp_pose = pregrasp_pose

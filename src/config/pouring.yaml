@@ -1,5 +1,5 @@
 directives:
-  num_balls: 1
+  num_balls: 0
   object: mug
 max_time: -1
 lndf:

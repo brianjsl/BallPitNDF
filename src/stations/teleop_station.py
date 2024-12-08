@@ -83,6 +83,8 @@ directives:
 
     if object == 'bowl':
         rot = 15* random.random() + 180
+    elif object == 'mug':
+        rot = -30 * random.random()
     else:
         rot = -90 * random.random()
 
