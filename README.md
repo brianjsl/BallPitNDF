@@ -1,6 +1,6 @@
 # BallPitNDF
 
-!(Report)[https://www.dropbox.com/scl/fi/01kluje9vmr3jcukoggf4/ballpitndf.pdf?rlkey=qf6e1uaunnxw41y3309w394f7&st=j75hw6fa&dl=0]
+## [Report](https://www.dropbox.com/scl/fi/01kluje9vmr3jcukoggf4/ballpitndf.pdf?rlkey=qf6e1uaunnxw41y3309w394f7&st=j75hw6fa&dl=0)
 
 This is the final project of Brian Lee and Eric Chen for [6.4210 (Robotic Manipulation)](https://manipulation.csail.mit.edu/Fall2024/schedule.html). In this project, we created a full-stack robotic system that uses Local Neural Descriptor Fields to grasp Baskets after only giving demos on Mugs and then do ball pouring.
 
@@ -50,8 +50,8 @@ A brief documentation of the major files in our code:
 
 * `merge_point_clouds.py`: Introuces the `MergePointClouds` system which combines the point clouds of a station 
 into a single point cloud. The crop is done without cheat ports using a combination of the 
-!(GroundingDINO)[https://github.com/IDEA-Research/GroundingDINO] algorithms and the 
-!(Segment Anything)[https://github.com/facebookresearch/segment-anything] algorithms for segmentation. 
+[GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) algorithms and the 
+[Segment Anything](https://github.com/facebookresearch/segment-anything) algorithms for segmentation. 
 
 ### Grasping
 
