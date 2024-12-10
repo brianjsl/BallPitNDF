@@ -100,11 +100,11 @@ def run_pouring_experiments(cfg: DictConfig) -> bool:
 
             tqdm.write(f"[Run {i}] Ball in ball pit: {in_ballpit}")
             with open(f"{object_name}_accuracy.txt", "a") as f:
-                f.write(f"[Run {i}] Ball in ball pit: {in_ballpit}")
+                f.write(f"[Run {i}] Ball in ball pit: {in_ballpit}\n")
 
         except Exception as e:
             with open(f"{object_name}_accuracy.txt", "a") as f:
-                f.write(f"[Run {i}] Crashed due to Error: {e}")
+                f.write(f"[Run {i}] Crashed due to Error: {e}\n")
 
     pour_accuracy = num_success_pour / cfg.num_runs
     grasp_accuracy = num_success_grasp / cfg.num_runs

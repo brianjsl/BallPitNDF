@@ -51,7 +51,7 @@ class LNDFGrasper(LeafSystem):
         )
         self.load_demos()
 
-    def load_demos(self, demo_exp='lndf_mug_handle_demos', n_demos=10):
+    def load_demos(self, demo_exp='lndf_mug_demos', n_demos=10):
         demo_load_dir = osp.join(get_original_cwd(), 'src', 'demos', demo_exp)
         demo_fnames = os.listdir(demo_load_dir)
 

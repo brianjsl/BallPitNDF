@@ -1,5 +1,7 @@
 # BallPitNDF
 
+!(Report)[https://www.dropbox.com/scl/fi/01kluje9vmr3jcukoggf4/ballpitndf.pdf?rlkey=qf6e1uaunnxw41y3309w394f7&st=j75hw6fa&dl=0]
+
 This is the final project of Brian Lee and Eric Chen for [6.4210 (Robotic Manipulation)](https://manipulation.csail.mit.edu/Fall2024/schedule.html). In this project, we created a full-stack robotic system that uses Local Neural Descriptor Fields to grasp Baskets after only giving demos on Mugs and then do ball pouring.
 
 ## Requirements and Development
