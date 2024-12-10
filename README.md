@@ -1,4 +1,4 @@
-# BallPitNDF
+# BallPitNDF: Few-Shot Pouring with Local Neural Descriptor Fields
 
 ## [Report](https://www.dropbox.com/scl/fi/01kluje9vmr3jcukoggf4/ballpitndf.pdf?rlkey=qf6e1uaunnxw41y3309w394f7&st=j75hw6fa&dl=0)
 
