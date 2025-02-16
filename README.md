@@ -4,6 +4,8 @@
 
 This is the final project of Brian Lee and Eric Chen for [6.4210 (Robotic Manipulation)](https://manipulation.csail.mit.edu/Fall2024/schedule.html). In this project, we created a full-stack robotic system that uses Local Neural Descriptor Fields to grasp Baskets after only giving demos on Mugs and then do ball pouring.
 
+![Basket Pouring Demo](https://www.dropbox.com/scl/fi/vrdije06kfasxal2cluib/basket_pouring.png?rlkey=flaesxacs4o8cv6dsjcnvu65s&st=0xrg6ceh&dl=0)
+
 ## Requirements and Development
 
 Create a new conda environment using `conda create -n ballpitndf python=3.11 pip`. Then activate this environment
