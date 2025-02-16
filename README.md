@@ -4,7 +4,7 @@
 
 This is the final project of Brian Lee and Eric Chen for [6.4210 (Robotic Manipulation)](https://manipulation.csail.mit.edu/Fall2024/schedule.html). In this project, we created a full-stack robotic system that uses Local Neural Descriptor Fields to grasp Baskets after only giving demos on Mugs and then do ball pouring.
 
-![Basket Pouring Demo](https://previews.dropbox.com/p/thumb/ACjN8YGHXKnoj-wHmzBbAsFsQa5Ogcij-ZALzu-rXq2iz5HPQ3tGFVM75sG6-I9Y0Si4UpP1hmE1T3RHO3Rlgdt1VaNTSA1wKNoYOBdLnblTQp6i_hAa50drdDOGchS3XrJYV19s9qre2kyp9pFZACRzww7FIeniBLDoy_0UMAmSAQpFQGQ__fY_fft-zNJHL6wVjss9zP6YSKnFe-vYaVGXm7FTIdT5avynckGvgCdfEXvVBVbd24zR25B0OS5qGlCKfHC-0pfX9wgMDr_7a3EVkZ9zSbVtS66RLUUri_wcd8A6KedfAWzMBPkXkTAgAZA/p.png)
+![Basket Pouring Demo](https://i.imgur.com/zwldONa.png)
 
 ## Requirements and Development
 
